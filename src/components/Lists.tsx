@@ -85,6 +85,11 @@ export default function Lists({
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
   const [pageSize, setPageSize] = useState<number>(10);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterCategory, filterFornecedor, filterCentroCusto, filterDestino, filterRequisitor, filterStartDate, filterEndDate, pageSize]);
 
   // Item additions inputs
   const [newItemName, setNewItemName] = useState("");
@@ -431,7 +436,15 @@ export default function Lists({
 
           const solicitante = getVal(["solicitante", "requester", "solicitadopor", "solicitado", "requisitor", "requisitante", "colaborador", "criador", "responsavel", "quem", "comprador", "autor"])?.toString() || userProfileName || "User";
           const setor = getVal(["setor", "sector", "department", "departamento", "area", "divisao", "centroderesponsabilidade", "setor_solicitante"])?.toString() || "Tecnologia";
-          const centroCusto = getVal(["centrodecusto", "centrocusto", "costcenter", "cc", "centro_de_custo", "codigo_cc", "codigocc", "setor_cc", "centro_custo", "centrocustos"])?.toString() || "CC-TI-42";
+          const centroCusto = getVal([
+            "centrodecusto", "centrocusto", "costcenter", "cc", "centro_de_custo", 
+            "codigo_cc", "codigocc", "setor_cc", "centro_custo", "centrocustos",
+            "nomedocentrodecusto", "nomecentrocusto", "ccusto", "cdecusto", 
+            "centrodecustos", "codigodocentrodecusto", "codigocentrodecusto", 
+            "setorcc", "ccnome", "ccdescricao", "descricaodocentrodecusto", 
+            "custocentro", "cc_nome", "cc_descricao", "nome_centro_de_custo",
+            "nome_cc", "cc_desc", "cc_codigo", "codigocentro_de_custo", "centrocusto_codigo"
+          ])?.toString()?.trim() || "CC-TI-42";
           const finalCartao = getVal(["finalcartao", "card", "cartao", "finaldocartao", "numerodocartao", "numerocartao", "numdocartao", "n_cartao", "final", "cartaofinal", "final_cartao"])?.toString() || "9876";
           
           const entregaRaw = getVal(["previsaoentrega", "entrega", "delivery", "previsaodeentrega", "dataentrega", "prazodeentrega", "recebimento", "previsao", "data_entrega"]);
@@ -957,17 +970,24 @@ export default function Lists({
           </div>
 
           {/* Main Table Container */}
-          <div className="bg-white border border-slate-100 rounded-2xl shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[1550px]">
-                <thead className="bg-slate-50/70 text-[10px] uppercase font-bold tracking-wider text-slate-500 border-b border-slate-100">
-                  <tr>
-                    <th className="px-2.5 py-2 text-center w-10">
-                      <input
-                        type="checkbox"
-                        checked={filteredLists.slice(0, pageSize).length > 0 && filteredLists.slice(0, pageSize).every(list => selectedIds.includes(list.id))}
-                        onChange={(e) => {
-                          const visibleLists = filteredLists.slice(0, pageSize);
+          {(() => {
+            const totalPages = Math.ceil(filteredLists.length / pageSize) || 1;
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = startIndex + pageSize;
+            const paginatedLists = filteredLists.slice(startIndex, endIndex);
+
+            return (
+              <div className="bg-white border border-slate-100 rounded-2xl shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse min-w-[1550px]">
+                    <thead className="bg-slate-50/70 text-[10px] uppercase font-bold tracking-wider text-slate-500 border-b border-slate-100">
+                      <tr>
+                        <th className="px-2.5 py-2 text-center w-10">
+                          <input
+                            type="checkbox"
+                            checked={paginatedLists.length > 0 && paginatedLists.every(list => selectedIds.includes(list.id))}
+                            onChange={(e) => {
+                              const visibleLists = paginatedLists;
                           if (e.target.checked) {
                             setSelectedIds(prev => {
                               const newSelection = [...prev];
@@ -1001,7 +1021,7 @@ export default function Lists({
                   </tr>
                 </thead>
                 <tbody className="text-xs text-slate-700 divide-y divide-slate-100/70">
-                  {filteredLists.slice(0, pageSize).map((list) => {
+                  {paginatedLists.map((list) => {
                     const itemsSummary = list.items
                       .map(item => `${item.name} (${item.quantity}x)`)
                       .join(", ");
@@ -1266,7 +1286,69 @@ export default function Lists({
                 </tbody>
               </table>
             </div>
+
+            {/* Controles de Paginação */}
+            <div className="bg-slate-50/50 border-t border-slate-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-xs font-semibold text-slate-500">
+                Mostrando <span className="text-slate-800 font-bold">{filteredLists.length > 0 ? startIndex + 1 : 0}</span> até{" "}
+                <span className="text-slate-800 font-bold">
+                  {Math.min(endIndex, filteredLists.length)}
+                </span>{" "}
+                de <span className="text-slate-800 font-bold">{filteredLists.length}</span> lançamentos
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  <span>Anterior</span>
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum = currentPage;
+                    if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+
+                    if (pageNum < 1 || pageNum > totalPages) return null;
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`w-8 h-8 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center ${
+                          currentPage === pageNum
+                            ? "bg-indigo-600 text-white shadow-sm"
+                            : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="flex items-center gap-1 px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-white disabled:cursor-not-allowed transition-all cursor-pointer"
+                >
+                  <span>Próxima</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
           </div>
+        );
+      })()}
 
         </div>
       ) : (
