@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { 
   LayoutDashboard, ShoppingCart, PlusCircle, 
   Sparkles, Bell, X, User, ShieldCheck, CreditCard,
-  Building, Folder, Truck, MapPin, DollarSign, ChevronRight, Layers, Filter, Calendar
+  Building, Folder, Truck, MapPin, DollarSign, ChevronRight, Layers, Filter, Calendar,
+  LogOut, Lock, Mail
 } from "lucide-react";
 import { ShoppingList, ShoppingItem, CategoryType, AppCategory, INITIAL_APP_CATEGORIES } from "./types";
 import Dashboard from "./components/Dashboard";
@@ -14,8 +15,15 @@ import ScanReceiptModal from "./components/ScanReceiptModal";
 const INITIAL_LISTS: ShoppingList[] = [];
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    return localStorage.getItem("shopcontrol_loggedin") === "true";
+  });
+  const [loginUsername, setLoginUsername] = useState("User");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginError, setLoginError] = useState("");
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'lists' | 'categories'>('dashboard');
-  const [userProfileName, setUserProfileName] = useState("Alex");
+  const [userProfileName, setUserProfileName] = useState("User");
   const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
   const [categories, setCategories] = useState<AppCategory[]>([]);
   const [monthlyIncome, setMonthlyIncome] = useState(3570.50); // Mock standard revenue ledger
@@ -31,7 +39,7 @@ export default function App() {
   const [newListFormBudget, setNewListFormBudget] = useState("");
   const [newListFormCategory, setNewListFormCategory] = useState<CategoryType>("");
   const [newListFormParcelas, setNewListFormParcelas] = useState("1");
-  const [newListFormSolicitante, setNewListFormSolicitante] = useState("Alex");
+  const [newListFormSolicitante, setNewListFormSolicitante] = useState("User");
   const [newListFormSetor, setNewListFormSetor] = useState("Tecnologia");
   const [newListFormCentroCusto, setNewListFormCentroCusto] = useState("CC-TI-42");
   const [newListFormFinalCartao, setNewListFormFinalCartao] = useState("9876");
@@ -203,6 +211,40 @@ export default function App() {
     localStorage.setItem("shopcontrol_profilename", newName);
   };
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!loginUsername.trim()) {
+      setLoginError("Por favor, insira seu usuário.");
+      return;
+    }
+    if (!loginPassword) {
+      setLoginError("Por favor, insira sua senha.");
+      return;
+    }
+    if (loginPassword !== "1234") {
+      setLoginError("Senha incorreta. Tente novamente.");
+      return;
+    }
+
+    setLoginError("");
+    setIsLoggedIn(true);
+    localStorage.setItem("shopcontrol_loggedin", "true");
+
+    const username = loginUsername.trim();
+    const capitalized = username.charAt(0).toUpperCase() + username.slice(1);
+    setUserProfileName(capitalized);
+    localStorage.setItem("shopcontrol_profilename", capitalized);
+  };
+
+  const handleLogout = () => {
+    if (window.confirm("Deseja realmente encerrar a sessão?")) {
+      setIsLoggedIn(false);
+      localStorage.setItem("shopcontrol_loggedin", "false");
+      setLoginPassword("");
+      alert("Sessão encerrada com sucesso.");
+    }
+  };
+
   // State manipulation handlers
   const handleCreateList = (e: React.FormEvent) => {
     e.preventDefault();
@@ -262,7 +304,7 @@ export default function App() {
     setNewListFormBudget("");
     setNewListFormCategory(categories[0] ? `${categories[0].description} - ${categories[0].code}` : "");
     setNewListFormParcelas("1");
-    setNewListFormSolicitante(userProfileName || "Alex");
+    setNewListFormSolicitante(userProfileName || "User");
     setNewListFormSetor("Tecnologia");
     setNewListFormCentroCusto("CC-TI-42");
     setNewListFormFinalCartao("9876");
@@ -334,6 +376,72 @@ export default function App() {
     setActiveTab('lists');
   };
 
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50/50 p-4">
+        <div className="max-w-md w-full bg-white border border-slate-200/80 rounded-3xl p-8 md:p-10 shadow-xl transition-all duration-300">
+          <div className="text-center mb-8">
+            <div className="w-16 h-16 bg-indigo-50 flex items-center justify-center rounded-2xl text-indigo-600 mb-5 mx-auto shadow-sm">
+              <ShoppingCart className="w-8 h-8" />
+            </div>
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight font-serif" style={{ fontFamily: "Playfair Display, Georgia, serif" }}>
+              Controle de Compras
+            </h1>
+            <p className="text-xs text-slate-500 mt-2 max-w-[280px] mx-auto">
+              Gerencie e acompanhe todas as compras e faturamentos corporativos
+            </p>
+          </div>
+
+          <form onSubmit={handleLogin} className="space-y-5">
+            <div>
+              <label className="block text-slate-700 font-bold mb-1.5 text-xs flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-slate-400" />
+                Usuário de Acesso
+              </label>
+              <input
+                type="text"
+                required
+                value={loginUsername}
+                onChange={(e) => setLoginUsername(e.target.value)}
+                placeholder="User"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-2xs text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-700 font-bold mb-1.5 text-xs flex items-center gap-1">
+                <Lock className="w-3.5 h-3.5 text-slate-400" />
+                Senha de Acesso
+              </label>
+              <input
+                type="password"
+                required
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                placeholder="••••"
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium placeholder:text-slate-400 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-2xs text-sm"
+              />
+            </div>
+
+            {loginError && (
+              <div className="bg-rose-50 border border-rose-100 p-3.5 rounded-xl flex items-center gap-2 text-rose-600 text-xs font-semibold animate-pulse">
+                <X className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{loginError}</span>
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold py-3.5 px-4 rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98] duration-100 mt-2 cursor-pointer text-sm flex items-center justify-center gap-2"
+            >
+              <span>Entrar na Plataforma</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface flex flex-col md:flex-row selection:bg-brand-secondary-container text-on-surface">
       
@@ -394,6 +502,17 @@ export default function App() {
             <span>Categorias</span>
           </button>
         </nav>
+
+        {/* Desktop Sidebar Logout */}
+        <div className="pt-4 border-t border-slate-100">
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-all text-left text-sm font-semibold"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Sair</span>
+          </button>
+        </div>
       </aside>
 
       {/* MAIN LAYOUT WRAPPER */}
@@ -439,6 +558,15 @@ export default function App() {
             >
               <Bell className="w-5 h-5 text-slate-500" />
             </button>
+
+            {/* Header Logout button for mobile (icon-only to save space) */}
+            <button 
+              onClick={handleLogout}
+              className="w-10 h-10 md:hidden flex items-center justify-center rounded-full hover:bg-rose-50 text-rose-500 hover:text-rose-600 transition-colors active:scale-95 duration-100 cursor-pointer"
+              title="Sair da plataforma"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
           </div>
         </header>
 
@@ -476,6 +604,7 @@ export default function App() {
               onSelectList={(list) => setSelectedListId(list ? list.id : null)}
               onOpenNewListModal={() => setIsNewListModalOpen(true)}
               onNavigate={setActiveTab}
+              onLogout={handleLogout}
             />
           )}
 
@@ -740,7 +869,7 @@ export default function App() {
                           required
                           value={newListFormSolicitante}
                           onChange={(e) => setNewListFormSolicitante(e.target.value)}
-                          placeholder="Ex: Alex"
+                          placeholder="Ex: User"
                           className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-slate-900 font-medium focus:outline-hidden focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all shadow-2xs"
                         />
                       </div>

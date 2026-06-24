@@ -21,6 +21,7 @@ interface ListsProps {
   onOpenNewListModal: () => void;
   categories: AppCategory[];
   onNavigate?: (tab: 'dashboard' | 'lists' | 'categories') => void;
+  onLogout?: () => void;
 }
 
 const formatDate = (dateStr: string | undefined): string => {
@@ -67,7 +68,8 @@ export default function Lists({
   onSelectList,
   onOpenNewListModal,
   categories,
-  onNavigate
+  onNavigate,
+  onLogout
 }: ListsProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -273,10 +275,16 @@ export default function Lists({
         // Parse each row into a ShoppingList
         const importedLists: ShoppingList[] = json.map((row: any, index) => {
           const getVal = (keys: string[]) => {
+            const cleanStr = (s: string) => 
+              s.toLowerCase()
+               .normalize("NFD")
+               .replace(/[\u0300-\u036f]/g, "")
+               .trim()
+               .replace(/[\s\-\/_()$]/g, '');
+
             for (const key of keys) {
               const foundKey = Object.keys(row).find(k => 
-                k.toLowerCase().trim().replace(/[\s\-\/_()]/g, '') === 
-                key.toLowerCase().trim().replace(/[\s\-\/_()]/g, '')
+                cleanStr(k) === cleanStr(key)
               );
               if (foundKey && row[foundKey] !== undefined) {
                 return row[foundKey];
@@ -376,7 +384,7 @@ export default function Lists({
           const spentVal = Number(getVal(["valortotal", "spent", "valor", "total", "valortotalr$"])) || 0;
           const solicitante = getVal(["solicitante", "requester", "solicitadopor", "solicitado"])?.toString() || "Alex";
           const setor = getVal(["setor", "sector", "department", "departamento"])?.toString() || "Tecnologia";
-          const centroCusto = getVal(["centrocusto", "costcenter", "cc"])?.toString() || "CC-TI-42";
+          const centroCusto = getVal(["centrodecusto", "centrocusto", "costcenter", "cc"])?.toString() || "CC-TI-42";
           const finalCartao = getVal(["finalcartao", "card", "cartao", "finaldocartao"])?.toString() || "9876";
           
           const entregaRaw = getVal(["previsaoentrega", "entrega", "delivery", "previsaodeentrega"]);
@@ -638,8 +646,9 @@ export default function Lists({
               <button
                 onClick={() => {
                   if (window.confirm("Deseja realmente sair da plataforma?")) {
-                    alert("Sessão encerrada com sucesso.");
-                    if (onNavigate) {
+                    if (onLogout) {
+                      onLogout();
+                    } else if (onNavigate) {
                       onNavigate("dashboard");
                     }
                   }
