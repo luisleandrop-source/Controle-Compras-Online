@@ -1,0 +1,53 @@
+{
+  "collections": {
+    "lists": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "budget": { "type": "number" },
+          "spent": { "type": "number" },
+          "date": { "type": "string" },
+          "category": { "type": "string" },
+          "status": { "type": "string" },
+          "items": { "type": "array" },
+          "fornecedor": { "type": "string" },
+          "parcelas": { "type": "number" },
+          "solicitante": { "type": "string" },
+          "setor": { "type": "string" },
+          "centroCusto": { "type": "string" },
+          "finalCartao": { "type": "string" },
+          "entrega": { "type": "string" },
+          "destino": { "type": "string" },
+          "descricao": { "type": "string" },
+          "dataLancamento": { "type": "string" }
+        },
+        "required": ["id", "name", "budget", "spent", "date", "category", "status", "items"]
+      }
+    },
+    "categories": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "code": { "type": "string" },
+          "description": { "type": "string" }
+        },
+        "required": ["id", "code", "description"]
+      }
+    },
+    "settings": {
+      "schema": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "monthlyIncome": { "type": "number" },
+          "monthlyLimit": { "type": "number" }
+        },
+        "required": ["id", "monthlyIncome", "monthlyLimit"]
+      }
+    }
+  },
+  "rules": "rules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}"
+}

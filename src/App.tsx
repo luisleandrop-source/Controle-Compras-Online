@@ -10,6 +10,19 @@ import Dashboard from "./components/Dashboard";
 import Lists from "./components/Lists";
 import Categories from "./components/Categories";
 import ScanReceiptModal from "./components/ScanReceiptModal";
+import { 
+  listenShoppingLists, 
+  listenCategories, 
+  listenSettings, 
+  saveShoppingList, 
+  deleteShoppingList, 
+  deleteShoppingLists, 
+  saveMultipleShoppingLists, 
+  saveCategory, 
+  deleteCategory, 
+  saveMultipleCategories, 
+  saveSettings 
+} from "./firebase";
 
 // Initial seeded list of shopping items and lists is empty to allow starting from scratch
 const INITIAL_LISTS: ShoppingList[] = [];
@@ -59,75 +72,79 @@ export default function App() {
     .filter((list) => list.status === "CONCLUÍDO")
     .reduce((sum, list) => sum + list.spent, 0);
 
-  // Load state from localStorage on build
+  // Load profile name and set up Firebase real-time listeners
   useEffect(() => {
-    const savedLists = localStorage.getItem("shopcontrol_lists");
-    const savedIncome = localStorage.getItem("shopcontrol_income");
-    const savedLimit = localStorage.getItem("shopcontrol_limit");
+    // Load local profile name first
     const savedName = localStorage.getItem("shopcontrol_profilename");
-    const savedCategories = localStorage.getItem("shopcontrol_categories");
-
-    let loadedCats: AppCategory[] = INITIAL_APP_CATEGORIES;
-    if (savedCategories) {
-      try {
-        loadedCats = JSON.parse(savedCategories);
-      } catch (e) {
-        loadedCats = INITIAL_APP_CATEGORIES;
-      }
-    }
-    setCategories(loadedCats);
-    localStorage.setItem("shopcontrol_categories", JSON.stringify(loadedCats));
-
-    if (loadedCats.length > 0) {
-      setNewListFormCategory(`${loadedCats[0].description} - ${loadedCats[0].code}`);
-    }
-
-    if (savedLists) {
-      try {
-        const parsed = JSON.parse(savedLists) as ShoppingList[];
-        // Filter out any mock "seed" data so the user begins on an empty slate
-        const filtered = parsed.filter((list) => !list.id.startsWith("seed-list-"));
-        
-        // Migrate legacy categories to modern coded classifications
-        const migrated = filtered.map((list) => {
-          let cat = list.category || "";
-          const match = cat.match(/^(\d{5})\s*-\s*(.+)$/);
-          if (match) {
-            cat = `${match[2]} - ${match[1]}`;
-          } else {
-            const codeMatch = cat.match(/\b\d{5}\b/);
-            if (!codeMatch) {
-              const upper = cat.trim().toUpperCase();
-              if (upper === "SUPERMERCADO" || upper === "ALIMENTAÇÃO") {
-                cat = "Custos Diversos de Baixo Valor - Operacional - 16008";
-              } else if (upper === "CONSTRUÇÃO") {
-                cat = "Manutenções - Materiais - 19002";
-              } else if (upper === "ELETRÔNICOS") {
-                cat = "Equipamentos de Informatica - 21004";
-              } else if (upper === "LAZER") {
-                cat = "Custos Diversos de Baixo Valor - Operacional - 16008";
-              } else if (upper === "SERVIÇOS") {
-                cat = "Consultorias - Operacional - 16011";
-              } else if (upper === "OUTROS" || !upper) {
-                cat = "Custos Diversos de Baixo Valor - Operacional - 16008";
-              }
-            }
-          }
-          return { ...list, category: cat };
-        });
-
-        setShoppingLists(migrated);
-        localStorage.setItem("shopcontrol_lists", JSON.stringify(migrated));
-      } catch (e) {
-        setShoppingLists(INITIAL_LISTS);
-      }
-    } else {
-      setShoppingLists(INITIAL_LISTS);
-    }
-
-    if (savedIncome) setMonthlyIncome(parseFloat(savedIncome) || 3570.50);
-    if (savedLimit) setMonthlyLimit(parseFloat(savedLimit) || 2500.00);
     if (savedName) setUserProfileName(savedName);
+
+    // 1. Listen to shopping lists on Firestore
+    const unsubscribeLists = listenShoppingLists((firestoreLists) => {
+      if (firestoreLists && firestoreLists.length > 0) {
+        setShoppingLists(firestoreLists);
+        localStorage.setItem("shopcontrol_lists", JSON.stringify(firestoreLists));
+      } else {
+        // If firestore is completely empty, upload local items if any exist
+        const savedLists = localStorage.getItem("shopcontrol_lists");
+        if (savedLists) {
+          try {
+            const parsed = JSON.parse(savedLists) as ShoppingList[];
+            const filtered = parsed.filter((list) => !list.id.startsWith("seed-list-"));
+            if (filtered.length > 0) {
+              saveMultipleShoppingLists(filtered);
+            }
+          } catch (e) {
+            console.error("Erro ao migrar listas locais para o Firestore:", e);
+          }
+        }
+      }
+    });
+
+    // 2. Listen to categories on Firestore
+    const unsubscribeCategories = listenCategories((firestoreCats) => {
+      if (firestoreCats && firestoreCats.length > 0) {
+        setCategories(firestoreCats);
+        localStorage.setItem("shopcontrol_categories", JSON.stringify(firestoreCats));
+        
+        // Also update form default if not set
+        setNewListFormCategory(`${firestoreCats[0].description} - ${firestoreCats[0].code}`);
+      } else {
+        // If firestore is empty, seed/upload local categories
+        const savedCategories = localStorage.getItem("shopcontrol_categories");
+        let loadedCats: AppCategory[] = INITIAL_APP_CATEGORIES;
+        if (savedCategories) {
+          try {
+            loadedCats = JSON.parse(savedCategories);
+          } catch (e) {
+            loadedCats = INITIAL_APP_CATEGORIES;
+          }
+        }
+        saveMultipleCategories(loadedCats);
+      }
+    });
+
+    // 3. Listen to budget/income settings on Firestore
+    const unsubscribeSettings = listenSettings((firestoreSettings) => {
+      if (firestoreSettings) {
+        setMonthlyIncome(firestoreSettings.monthlyIncome);
+        setMonthlyLimit(firestoreSettings.monthlyLimit);
+        localStorage.setItem("shopcontrol_income", firestoreSettings.monthlyIncome.toString());
+        localStorage.setItem("shopcontrol_limit", firestoreSettings.monthlyLimit.toString());
+      } else {
+        // Seed with current local values if settings do not exist on Firestore
+        const savedIncome = localStorage.getItem("shopcontrol_income");
+        const savedLimit = localStorage.getItem("shopcontrol_limit");
+        const income = savedIncome ? parseFloat(savedIncome) : 3570.50;
+        const limit = savedLimit ? parseFloat(savedLimit) : 2500.00;
+        saveSettings({ monthlyIncome: income, monthlyLimit: limit });
+      }
+    });
+
+    return () => {
+      unsubscribeLists();
+      unsubscribeCategories();
+      unsubscribeSettings();
+    };
   }, []);
 
   // Sync utilities
@@ -162,6 +179,9 @@ export default function App() {
 
     setShoppingLists(migratedList);
     localStorage.setItem("shopcontrol_lists", JSON.stringify(migratedList));
+    saveMultipleShoppingLists(migratedList).catch(err => {
+      console.error("Erro ao sincronizar listas com o Firestore:", err);
+    });
   };
 
   const saveCategoriesToStorage = (updatedCats: AppCategory[]) => {
@@ -171,6 +191,9 @@ export default function App() {
     if (updatedCats.length > 0 && !newListFormCategory) {
       setNewListFormCategory(`${updatedCats[0].description} - ${updatedCats[0].code}`);
     }
+    saveMultipleCategories(updatedCats).catch(err => {
+      console.error("Erro ao sincronizar categorias com o Firestore:", err);
+    });
   };
 
   const handleAddCategory = (code: string, description: string) => {
@@ -204,6 +227,9 @@ export default function App() {
     setMonthlyIncome(income);
     localStorage.setItem("shopcontrol_limit", limit.toString());
     localStorage.setItem("shopcontrol_income", income.toString());
+    saveSettings({ monthlyIncome: income, monthlyLimit: limit }).catch(err => {
+      console.error("Erro ao sincronizar configurações com o Firestore:", err);
+    });
   };
 
   const saveProfileName = (newName: string) => {
@@ -359,6 +385,19 @@ export default function App() {
   };
 
   const handleResetApp = () => {
+    // Collect all list IDs to delete them from Firestore in batch
+    const idsToDelete = shoppingLists.map(l => l.id);
+    if (idsToDelete.length > 0) {
+      deleteShoppingLists(idsToDelete).catch(err => {
+        console.error("Erro ao limpar listas do Firestore:", err);
+      });
+    }
+    
+    // Reset settings in Firestore
+    saveSettings({ monthlyIncome: 3000, monthlyLimit: 2000 }).catch(err => {
+      console.error("Erro ao redefinir configurações no Firestore:", err);
+    });
+
     setShoppingLists([]);
     setSelectedListId(null);
     setMonthlyIncome(3000);
@@ -513,7 +552,7 @@ export default function App() {
             <span>Sair</span>
           </button>
           <div className="px-4 text-[10px] text-slate-400 font-mono text-center md:text-left">
-            Versão 1.4.0
+            Versão 1.5.0
           </div>
         </div>
       </aside>

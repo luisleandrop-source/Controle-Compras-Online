@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.4.0",
+  "version": "1.5.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -16,6 +16,7 @@
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "firebase": "^12.15.0",
     "googleapis": "^173.0.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
