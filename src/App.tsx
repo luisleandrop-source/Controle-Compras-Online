@@ -552,7 +552,7 @@ export default function App() {
             <span>Sair</span>
           </button>
           <div className="px-4 text-[10px] text-slate-400 font-mono text-center md:text-left">
-            Versão 1.5.0
+            Versão 1.6.0
           </div>
         </div>
       </aside>

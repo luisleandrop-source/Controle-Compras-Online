@@ -235,7 +235,7 @@ export default function Lists({
         "Data": formatExcelDate(list.dataLancamento || list.date),
         "Fornecedor": list.fornecedor || list.name || "",
         "Classificação / Categoria Contábil": list.category || "",
-        "Itens Adquiridos": itemsStr,
+        "Produtos": list.descricao || itemsStr || "",
         "Parcelas": list.parcelas || 1,
         "Valor Total (R$)": list.spent,
         "Solicitante": list.solicitante || "Alex",
@@ -254,7 +254,7 @@ export default function Lists({
     XLSX.utils.book_append_sheet(workbook, worksheet, "Controle de Compras");
     
     // Auto-fit column widths
-    const maxProps = ["ID", "Data", "Fornecedor", "Classificação / Categoria Contábil", "Itens Adquiridos", "Parcelas", "Valor Total (R$)", "Solicitante", "Setor", "Centro de Custo", "Final Cartão", "Previsão de Entrega", "Destino", "Descrição", "Status"];
+    const maxProps = ["ID", "Data", "Fornecedor", "Classificação / Categoria Contábil", "Produtos", "Parcelas", "Valor Total (R$)", "Solicitante", "Setor", "Centro de Custo", "Final Cartão", "Previsão de Entrega", "Destino", "Descrição", "Status"];
     const wscols = maxProps.map(prop => ({ wch: Math.max(prop.length + 3, 14) }));
     worksheet['!cols'] = wscols;
 
@@ -362,7 +362,7 @@ export default function Lists({
             category = categories[0] ? `${categories[0].description} - ${categories[0].code}` : "Custos Diversos de Baixo Valor - Operacional - 16008";
           }
 
-          const itemsRaw = getVal(["itens", "items", "itensadquiridos", "produtos", "produtosadquiridos", "descricaodositens", "detalhes"])?.toString() || "";
+          const itemsRaw = getVal(["itens", "items", "itensadquiridos", "produtos", "produto", "produtosadquiridos", "descricaodositens", "detalhes"])?.toString() || "";
           const items: ShoppingItem[] = [];
           if (itemsRaw) {
             const parts = itemsRaw.split(",");
@@ -485,7 +485,7 @@ export default function Lists({
           }
 
           const destino = getVal(["destino", "destination", "local", "localentrega", "destinatario", "enviara", "enviar_para"])?.toString() || "Almoxarifado";
-          const descricao = getVal(["descricao", "description", "obs", "observacao", "detalhes", "motivo", "observacoes"])?.toString() || "";
+          const descricao = getVal(["descricao", "description", "produtos", "produto", "obs", "observacao", "detalhes", "motivo", "observacoes"])?.toString() || "";
           const statusVal = getVal(["status", "situacao", "estado", "aprovado", "fase", "pago", "etapa"])?.toString()?.toUpperCase() === "PENDENTE" ? "PENDENTE" : "CONCLUÍDO";
 
           return {
@@ -1027,7 +1027,7 @@ export default function Lists({
                       .join(", ");
                     
                     const isEditing = editingId === list.id;
-                    const productDisplay = list.descricao || itemsSummary || list.name;
+                    const productDisplay = list.descricao || itemsSummary || "Sem descrição";
                     
                     return (
                       <tr 
