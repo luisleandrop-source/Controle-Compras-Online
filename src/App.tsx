@@ -3,7 +3,7 @@ import {
   LayoutDashboard, ShoppingCart, PlusCircle, 
   Sparkles, Bell, X, User, ShieldCheck, CreditCard,
   Building, Folder, Truck, MapPin, DollarSign, ChevronRight, Layers, Filter, Calendar,
-  LogOut, Lock, Mail
+  LogOut, Lock, Mail, Database, RefreshCw, CheckCircle2, AlertCircle, Wifi, WifiOff
 } from "lucide-react";
 import { ShoppingList, ShoppingItem, CategoryType, AppCategory, INITIAL_APP_CATEGORIES } from "./types";
 import Dashboard from "./components/Dashboard";
@@ -66,6 +66,20 @@ export default function App() {
   });
   const [newListFormDestino, setNewListFormDestino] = useState("Almoxarifado Central");
   const [newListFormDescricao, setNewListFormDescricao] = useState("");
+
+  // Database Synchronization & Cohesion State
+  const [syncTrigger, setSyncTrigger] = useState(0);
+  const [isSyncingDb, setIsSyncingDb] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(() => {
+    return localStorage.getItem("shopcontrol_lastsync") || null;
+  });
+  const [dbStatus, setDbStatus] = useState<'online' | 'syncing' | 'error'>('online');
+  const [syncFeedback, setSyncFeedback] = useState<{
+    show: boolean;
+    type: 'success' | 'error';
+    title: string;
+    message: string;
+  } | null>(null);
 
   // Dynamic calculations for sidebar and desktop header
   const currentMonthTotalSpent = shoppingLists
@@ -145,7 +159,117 @@ export default function App() {
       unsubscribeCategories();
       unsubscribeSettings();
     };
-  }, []);
+  }, [syncTrigger]);
+
+  // Performs a manual structural integrity check, data repair, and Firestore subscription refresh
+  const handleDatabaseSync = async () => {
+    setIsSyncingDb(true);
+    setDbStatus('syncing');
+    
+    try {
+      // 1. Connection and structural health check
+      let repairedCount = 0;
+      
+      const normalizedLists = shoppingLists.map((list) => {
+        let listRepaired = false;
+        
+        // Ensure lists have a valid items array
+        let itemsCopy = Array.isArray(list.items) ? [...list.items] : [];
+        if (!Array.isArray(list.items)) {
+          listRepaired = true;
+        }
+
+        // Validate individual item structures inside the list to avoid undefined crashes in table renders
+        const repairedItems = itemsCopy.map((item) => {
+          let itemRepaired = false;
+          const updatedItem = { ...item };
+          
+          if (typeof updatedItem.price !== 'number' || isNaN(updatedItem.price)) {
+            updatedItem.price = 0;
+            itemRepaired = true;
+          }
+          if (typeof updatedItem.quantity !== 'number' || isNaN(updatedItem.quantity)) {
+            updatedItem.quantity = 1;
+            itemRepaired = true;
+          }
+          if (!updatedItem.name) {
+            updatedItem.name = "Item sem Nome";
+            itemRepaired = true;
+          }
+          
+          if (itemRepaired) repairedCount++;
+          return updatedItem;
+        });
+
+        // Recalculate spent values if discrepancy is found
+        const calculatedSpent = repairedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        
+        // Ensure category matches standardized list formatting
+        let cat = list.category || "Custos Diversos de Baixo Valor - Operacional - 16008";
+        if (!list.category) {
+          listRepaired = true;
+        }
+
+        if (listRepaired || list.spent !== calculatedSpent || JSON.stringify(repairedItems) !== JSON.stringify(list.items)) {
+          repairedCount++;
+          return {
+            ...list,
+            category: cat,
+            items: repairedItems,
+            spent: calculatedSpent
+          };
+        }
+        
+        return list;
+      });
+
+      // 2. Seed standard categories if database is empty
+      let categoriesCheckedCount = categories.length;
+      if (categories.length === 0) {
+        await saveMultipleCategories(INITIAL_APP_CATEGORIES);
+        categoriesCheckedCount = INITIAL_APP_CATEGORIES.length;
+      }
+
+      // 3. Write back any repaired lists to Firestore to synchronize structural fixes
+      if (repairedCount > 0) {
+        await saveMultipleShoppingLists(normalizedLists);
+      }
+
+      // 4. Force refresh the listeners
+      setSyncTrigger((prev) => prev + 1);
+
+      // Save sync timestamp
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+      setLastSyncTime(timeStr);
+      localStorage.setItem("shopcontrol_lastsync", timeStr);
+      setDbStatus('online');
+
+      // Set highly detailed informative feedback
+      setSyncFeedback({
+        show: true,
+        type: 'success',
+        title: 'Sincronização Concluída',
+        message: `Banco de dados 100% íntegro e atualizado! ${normalizedLists.length} lançamentos e ${categoriesCheckedCount} categorias validadas. ${repairedCount > 0 ? `${repairedCount} correções estruturais efetuadas.` : 'Nenhum erro de coesão encontrado.'}`
+      });
+
+    } catch (error) {
+      console.error("Erro na sincronização do banco de dados:", error);
+      setDbStatus('error');
+      setSyncFeedback({
+        show: true,
+        type: 'error',
+        title: 'Erro de Sincronização',
+        message: 'Falha ao conectar com o servidor Firestore. Os dados locais continuam acessíveis.'
+      });
+    } finally {
+      setIsSyncingDb(false);
+      // Auto dismiss feedback after 6 seconds
+      setTimeout(() => {
+        setSyncFeedback((prev) => prev ? { ...prev, show: false } : null);
+      }, 6000);
+    }
+  };
 
   // Sync utilities
   const saveListsToStorage = (updatedList: ShoppingList[]) => {
@@ -542,6 +666,45 @@ export default function App() {
           </button>
         </nav>
 
+        {/* Database Status & Sync Control */}
+        <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1.5 text-slate-700">
+              <Database className="w-4 h-4 text-slate-500" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">Banco de Dados</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              <span className={`w-2 h-2 rounded-full ${
+                dbStatus === 'online' ? 'bg-emerald-500 animate-pulse' :
+                dbStatus === 'syncing' ? 'bg-indigo-500 animate-spin' :
+                'bg-rose-500'
+              }`} />
+              <span className="text-[9px] font-bold font-mono text-slate-500 uppercase">
+                {dbStatus === 'online' ? 'Online' :
+                 dbStatus === 'syncing' ? 'Sinc...' : 'Erro'}
+              </span>
+            </div>
+          </div>
+          
+          <div className="text-[10px] text-slate-500 flex flex-col font-mono leading-relaxed border-t border-slate-100/60 pt-2">
+            <span className="flex justify-between"><span>Status:</span><span className="font-bold text-slate-700">Coeso</span></span>
+            {lastSyncTime ? (
+              <span className="flex justify-between"><span>Sinc:</span><span className="font-semibold">{lastSyncTime}</span></span>
+            ) : (
+              <span className="flex justify-between"><span>Sinc:</span><span className="text-slate-400">Nunca</span></span>
+            )}
+          </div>
+
+          <button
+            onClick={handleDatabaseSync}
+            disabled={isSyncingDb}
+            className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold rounded-xl transition-all shadow-xs text-xs cursor-pointer active:scale-95 disabled:pointer-events-none"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncingDb ? 'animate-spin' : ''}`} />
+            <span>{isSyncingDb ? 'Sincronizar' : 'Atualizar'}</span>
+          </button>
+        </div>
+
         {/* Desktop Sidebar Logout */}
         <div className="pt-4 border-t border-slate-100 space-y-2">
           <button
@@ -592,6 +755,20 @@ export default function App() {
               <ShieldCheck className="w-4 h-4 text-brand-primary" />
               <span>Processador Seguro</span>
             </div>
+
+            {/* Database Sync Header Action */}
+            <button 
+              onClick={handleDatabaseSync}
+              disabled={isSyncingDb}
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-95 duration-100 cursor-pointer ${
+                dbStatus === 'error' ? 'bg-rose-50 text-rose-500 hover:bg-rose-100' :
+                dbStatus === 'syncing' ? 'bg-indigo-50 text-indigo-600' :
+                'hover:bg-slate-100 text-slate-500'
+              }`}
+              title={isSyncingDb ? "Sincronizando banco de dados..." : "Sincronizar banco de dados para manter a integridade"}
+            >
+              <RefreshCw className={`w-5 h-5 ${isSyncingDb ? 'animate-spin text-indigo-600' : ''}`} />
+            </button>
 
             <button 
               onClick={() => alert("Você não possui novas notificações no momento.")}
@@ -1008,6 +1185,44 @@ export default function App() {
         onClose={() => setIsScanOpen(false)}
         onReceiptProcessed={handleReceiptProcessed}
       />
+
+      {/* Floating Database Sync Status Feedback Toast */}
+      {syncFeedback && syncFeedback.show && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-white border border-slate-100/80 rounded-2xl shadow-2xl p-5 flex gap-4 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="shrink-0 mt-0.5">
+            {syncFeedback.type === 'success' ? (
+              <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center text-rose-600">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="text-sm font-bold text-slate-900 leading-none flex items-center gap-1.5">
+              {syncFeedback.title}
+            </h4>
+            <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+              {syncFeedback.message}
+            </p>
+            {lastSyncTime && (
+              <div className="mt-2.5 flex items-center gap-2">
+                <span className="text-[9px] text-slate-400 font-mono">
+                  Última sincronização: {lastSyncTime}
+                </span>
+              </div>
+            )}
+          </div>
+          <button 
+            onClick={() => setSyncFeedback(prev => prev ? { ...prev, show: false } : null)}
+            className="shrink-0 text-slate-400 hover:text-slate-600 self-start p-1 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   );
 }
