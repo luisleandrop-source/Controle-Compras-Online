@@ -14,6 +14,7 @@ interface ListsProps {
   onCreateList: (name: string, budget: number, category: CategoryType) => void;
   onUpdateList: (updatedList: ShoppingList) => void;
   onDeleteList: (listId: string) => void;
+  onDeleteLists?: (listIds: string[]) => void;
   onImportLists?: (lists: ShoppingList[]) => void;
   selectedListId: string | null;
   onSelectList: (list: ShoppingList | null) => void;
@@ -60,6 +61,7 @@ export default function Lists({
   onCreateList,
   onUpdateList,
   onDeleteList,
+  onDeleteLists,
   onImportLists,
   selectedListId,
   onSelectList,
@@ -67,6 +69,7 @@ export default function Lists({
   categories,
   onNavigate
 }: ListsProps) {
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState<string>("All");
   
@@ -725,6 +728,25 @@ export default function Lists({
                 <Filter className="w-3.5 h-3.5 text-slate-500" />
                 <span>KPIs & Análises</span>
               </button>
+
+              {selectedIds.length > 0 && (
+                <button
+                  onClick={() => {
+                    if (window.confirm(`Deseja realmente excluir em massa os ${selectedIds.length} lançamentos selecionados?`)) {
+                      if (onDeleteLists) {
+                        onDeleteLists(selectedIds);
+                      } else {
+                        selectedIds.forEach(id => onDeleteList(id));
+                      }
+                      setSelectedIds([]);
+                    }
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white border border-rose-600 rounded-lg text-xs font-bold shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-95"
+                >
+                  <Trash2 className="w-3.5 h-3.5 text-white" />
+                  <span>Excluir em Massa ({selectedIds.length})</span>
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-2 w-full md:w-auto justify-end">
@@ -887,8 +909,25 @@ export default function Lists({
                     <th className="px-2.5 py-2 text-center w-10">
                       <input
                         type="checkbox"
+                        checked={filteredLists.slice(0, pageSize).length > 0 && filteredLists.slice(0, pageSize).every(list => selectedIds.includes(list.id))}
+                        onChange={(e) => {
+                          const visibleLists = filteredLists.slice(0, pageSize);
+                          if (e.target.checked) {
+                            setSelectedIds(prev => {
+                              const newSelection = [...prev];
+                              visibleLists.forEach(list => {
+                                if (!newSelection.includes(list.id)) {
+                                  newSelection.push(list.id);
+                                }
+                              });
+                              return newSelection;
+                            });
+                          } else {
+                            const visibleIds = visibleLists.map(list => list.id);
+                            setSelectedIds(prev => prev.filter(id => !visibleIds.includes(id)));
+                          }
+                        }}
                         className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                        readOnly
                       />
                     </th>
                     <th className="px-2.5 py-2 whitespace-nowrap text-left">Data</th>
@@ -928,6 +967,14 @@ export default function Lists({
                         <td className="px-2.5 py-1.5 text-center" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
+                            checked={selectedIds.includes(list.id)}
+                            onChange={() => {
+                              setSelectedIds(prev => 
+                                prev.includes(list.id) 
+                                  ? prev.filter(id => id !== list.id) 
+                                  : [...prev, list.id]
+                              );
+                            }}
                             className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                           />
                         </td>

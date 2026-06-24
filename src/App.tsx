@@ -295,6 +295,14 @@ export default function App() {
     }
   };
 
+  const handleDeleteLists = (listIds: string[]) => {
+    const updated = shoppingLists.filter(list => !listIds.includes(list.id));
+    saveListsToStorage(updated);
+    if (selectedListId && listIds.includes(selectedListId)) {
+      setSelectedListId(null);
+    }
+  };
+
   const handleImportLists = (imported: ShoppingList[]) => {
     const merged = [...shoppingLists];
     imported.forEach(item => {
@@ -462,6 +470,7 @@ export default function App() {
               }}
               onUpdateList={handleUpdateList}
               onDeleteList={handleDeleteList}
+              onDeleteLists={handleDeleteLists}
               onImportLists={handleImportLists}
               selectedListId={selectedListId}
               onSelectList={(list) => setSelectedListId(list ? list.id : null)}
