@@ -437,7 +437,7 @@ export default function Lists({
           const solicitante = getVal(["solicitante", "requester", "solicitadopor", "solicitado", "requisitor", "requisitante", "colaborador", "criador", "responsavel", "quem", "comprador", "autor"])?.toString() || userProfileName || "User";
           const setor = getVal(["setor", "sector", "department", "departamento", "area", "divisao", "centroderesponsabilidade", "setor_solicitante"])?.toString() || "Tecnologia";
           const centroCusto = getVal([
-            "centrodecusto", "centrocusto", "costcenter", "cc", "centro_de_custo", 
+            "centro", "centrodecusto", "centrocusto", "costcenter", "cc", "centro_de_custo", 
             "codigo_cc", "codigocc", "setor_cc", "centro_custo", "centrocustos",
             "nomedocentrodecusto", "nomecentrocusto", "ccusto", "cdecusto", 
             "centrodecustos", "codigodocentrodecusto", "codigocentrodecusto", 
@@ -921,12 +921,12 @@ export default function Lists({
                 </select>
               </div>
 
-              {/* 5. Requisitor */}
+              {/* 5. Solicitante */}
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Requisitor</label>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Solicitante</label>
                 <input
                   type="text"
-                  placeholder="Filtrar por requisitor"
+                  placeholder="Filtrar por solicitante"
                   value={filterRequisitor}
                   onChange={(e) => setFilterRequisitor(e.target.value)}
                   className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
@@ -1012,7 +1012,7 @@ export default function Lists({
                     <th className="px-2.5 py-2 whitespace-nowrap text-center" style={{ width: "60px" }}>Parc.</th>
                     <th className="px-2.5 py-2 whitespace-nowrap text-left">Fornecedor</th>
                     <th className="px-2.5 py-2 whitespace-nowrap text-left">Classificação / Categoria Contábil</th>
-                    <th className="px-2.5 py-2 whitespace-nowrap text-left">Requisitor</th>
+                    <th className="px-2.5 py-2 whitespace-nowrap text-left">Solicitante</th>
                     <th className="px-2.5 py-2 whitespace-nowrap text-left">Centro</th>
                     <th className="px-2.5 py-2 whitespace-nowrap text-left">Final Cartão</th>
                     <th className="px-2.5 py-2 whitespace-nowrap text-left">Destino</th>
@@ -1151,7 +1151,7 @@ export default function Lists({
                           )}
                         </td>
 
-                        {/* Requisitor (Solicitante) Column */}
+                        {/* Solicitante Column */}
                         <td className="px-2.5 py-1.5 font-medium text-slate-700 whitespace-nowrap">
                           {isEditing ? (
                             <input 
