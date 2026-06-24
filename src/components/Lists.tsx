@@ -22,6 +22,7 @@ interface ListsProps {
   categories: AppCategory[];
   onNavigate?: (tab: 'dashboard' | 'lists' | 'categories') => void;
   onLogout?: () => void;
+  userProfileName?: string;
 }
 
 const formatDate = (dateStr: string | undefined): string => {
@@ -69,7 +70,8 @@ export default function Lists({
   onOpenNewListModal,
   categories,
   onNavigate,
-  onLogout
+  onLogout,
+  userProfileName
 }: ListsProps) {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -294,9 +296,9 @@ export default function Lists({
           };
 
           // Extract values
-          const id = getVal(["id", "ID"])?.toString() || `imported-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`;
+          const id = getVal(["id", "identificador", "uuid", "codigo", "num", "sequencial"])?.toString() || `imported-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 5)}`;
           
-          const dateRaw = getVal(["data", "datalancamento", "date", "lancamento", "datadelancamento"]);
+          const dateRaw = getVal(["data", "datalancamento", "date", "lancamento", "datadelancamento", "datacompra", "datadecompra", "criadoem", "competencia", "dia"]);
           let dateVal = "";
           if (dateRaw) {
             if (dateRaw instanceof Date) {
@@ -337,10 +339,10 @@ export default function Lists({
             dateVal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
           }
 
-          const fornecedor = getVal(["fornecedor", "supplier", "nomefornecedor", "name", "nome"])?.toString() || "Fornecedor Importado";
+          const fornecedor = getVal(["fornecedor", "supplier", "nomefornecedor", "name", "nome", "parceiro", "empresa", "credor"])?.toString() || "Fornecedor Importado";
           
           // Match existing category
-          let category = getVal(["categoria", "categoriacontabil", "classificacao", "category", "classificacaocategoriacontabil"])?.toString() || "";
+          let category = getVal(["categoria", "categoriacontabil", "classificacao", "category", "classificacaocategoriacontabil", "classificacaocategoria", "cat", "grupodespesa", "conta"])?.toString() || "";
           if (category) {
             const lowerCat = category.toLowerCase();
             const matched = categories.find(c => 
@@ -355,7 +357,7 @@ export default function Lists({
             category = categories[0] ? `${categories[0].description} - ${categories[0].code}` : "Custos Diversos de Baixo Valor - Operacional - 16008";
           }
 
-          const itemsRaw = getVal(["itens", "items", "itensadquiridos", "produtos"])?.toString() || "";
+          const itemsRaw = getVal(["itens", "items", "itensadquiridos", "produtos", "produtosadquiridos", "descricaodositens", "detalhes"])?.toString() || "";
           const items: ShoppingItem[] = [];
           if (itemsRaw) {
             const parts = itemsRaw.split(",");
@@ -364,11 +366,24 @@ export default function Lists({
               if (!text) return;
               
               const qtyMatch = text.match(/\((\d+)x/);
-              const priceMatch = text.match(/R\$\s*([\d.]+)/);
+              const priceMatch = text.match(/R\$\s*([\d.,]+)/);
               
               const nameOnly = text.replace(/\([^)]+\)/g, "").trim();
               const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-              const price = priceMatch ? parseFloat(priceMatch[1]) : 0;
+              let price = 0;
+              if (priceMatch) {
+                let pStr = priceMatch[1].trim();
+                if (pStr.includes(",") && pStr.includes(".")) {
+                  if (pStr.indexOf(",") > pStr.indexOf(".")) {
+                    pStr = pStr.replace(/\./g, "").replace(",", ".");
+                  } else {
+                    pStr = pStr.replace(/,/g, "");
+                  }
+                } else if (pStr.includes(",")) {
+                  pStr = pStr.replace(",", ".");
+                }
+                price = parseFloat(pStr) || 0;
+              }
               
               items.push({
                 id: `item-${Date.now()}-${pIdx}-${Math.random().toString(36).substr(2, 5)}`,
@@ -380,14 +395,46 @@ export default function Lists({
             });
           }
 
-          const parcelasVal = Number(getVal(["parcelas", "installments", "nparcelas"])) || 1;
-          const spentVal = Number(getVal(["valortotal", "spent", "valor", "total", "valortotalr$"])) || 0;
-          const solicitante = getVal(["solicitante", "requester", "solicitadopor", "solicitado"])?.toString() || "Alex";
-          const setor = getVal(["setor", "sector", "department", "departamento"])?.toString() || "Tecnologia";
-          const centroCusto = getVal(["centrodecusto", "centrocusto", "costcenter", "cc"])?.toString() || "CC-TI-42";
-          const finalCartao = getVal(["finalcartao", "card", "cartao", "finaldocartao"])?.toString() || "9876";
+          // Robust Number parsing for Spent Value
+          const rawSpent = getVal(["valortotal", "spent", "valor", "total", "valortotalr$", "valortotal(r$)", "valor(r$)", "preco", "precomaximo", "valordascompras"]);
+          let spentVal = 0;
+          if (rawSpent !== undefined && rawSpent !== null) {
+            if (typeof rawSpent === "number") {
+              spentVal = rawSpent;
+            } else {
+              let str = rawSpent.toString().trim();
+              str = str.replace(/[R$\s]/g, "");
+              if (str.includes(",") && str.includes(".")) {
+                if (str.indexOf(",") > str.indexOf(".")) {
+                  str = str.replace(/\./g, "").replace(",", ".");
+                } else {
+                  str = str.replace(/,/g, "");
+                }
+              } else if (str.includes(",")) {
+                str = str.replace(",", ".");
+              }
+              spentVal = Number(str) || 0;
+            }
+          }
+
+          // Robust Number parsing for Parcelas
+          const rawParcelas = getVal(["parcelas", "installments", "nparcelas", "nroparcelas", "numeroofparcelas", "vezes", "quantidade_parcelas", "qtdparcelas", "prazo"]);
+          let parcelasVal = 1;
+          if (rawParcelas !== undefined && rawParcelas !== null) {
+            if (typeof rawParcelas === "number") {
+              parcelasVal = Math.round(rawParcelas);
+            } else {
+              const str = rawParcelas.toString().replace(/\D/g, "");
+              parcelasVal = parseInt(str, 10) || 1;
+            }
+          }
+
+          const solicitante = getVal(["solicitante", "requester", "solicitadopor", "solicitado", "requisitor", "requisitante", "colaborador", "criador", "responsavel", "quem", "comprador", "autor"])?.toString() || userProfileName || "User";
+          const setor = getVal(["setor", "sector", "department", "departamento", "area", "divisao", "centroderesponsabilidade", "setor_solicitante"])?.toString() || "Tecnologia";
+          const centroCusto = getVal(["centrodecusto", "centrocusto", "costcenter", "cc", "centro_de_custo", "codigo_cc", "codigocc", "setor_cc", "centro_custo", "centrocustos"])?.toString() || "CC-TI-42";
+          const finalCartao = getVal(["finalcartao", "card", "cartao", "finaldocartao", "numerodocartao", "numerocartao", "numdocartao", "n_cartao", "final", "cartaofinal", "final_cartao"])?.toString() || "9876";
           
-          const entregaRaw = getVal(["previsaoentrega", "entrega", "delivery", "previsaodeentrega"]);
+          const entregaRaw = getVal(["previsaoentrega", "entrega", "delivery", "previsaodeentrega", "dataentrega", "prazodeentrega", "recebimento", "previsao", "data_entrega"]);
           let entregaVal = "";
           if (entregaRaw) {
             if (entregaRaw instanceof Date) {
@@ -424,9 +471,9 @@ export default function Lists({
             }
           }
 
-          const destino = getVal(["destino", "destination"])?.toString() || "Almoxarifado";
-          const descricao = getVal(["descricao", "description"])?.toString() || "";
-          const statusVal = getVal(["status", "situacao"])?.toString()?.toUpperCase() === "PENDENTE" ? "PENDENTE" : "CONCLUÍDO";
+          const destino = getVal(["destino", "destination", "local", "localentrega", "destinatario", "enviara", "enviar_para"])?.toString() || "Almoxarifado";
+          const descricao = getVal(["descricao", "description", "obs", "observacao", "detalhes", "motivo", "observacoes"])?.toString() || "";
+          const statusVal = getVal(["status", "situacao", "estado", "aprovado", "fase", "pago", "etapa"])?.toString()?.toUpperCase() === "PENDENTE" ? "PENDENTE" : "CONCLUÍDO";
 
           return {
             id,
