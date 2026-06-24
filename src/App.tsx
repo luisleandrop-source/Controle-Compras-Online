@@ -337,6 +337,9 @@ export default function App() {
   const handleDeleteCategory = (id: string) => {
     const updated = categories.filter(cat => cat.id !== id);
     saveCategoriesToStorage(updated);
+    deleteCategory(id).catch(err => {
+      console.error("Erro ao excluir categoria do Firestore:", err);
+    });
   };
 
   const handleResetCategories = () => {
@@ -485,6 +488,9 @@ export default function App() {
     if (selectedListId === listId) {
       setSelectedListId(null);
     }
+    deleteShoppingList(listId).catch(err => {
+      console.error("Erro ao excluir lista do Firestore:", err);
+    });
   };
 
   const handleDeleteLists = (listIds: string[]) => {
@@ -493,6 +499,9 @@ export default function App() {
     if (selectedListId && listIds.includes(selectedListId)) {
       setSelectedListId(null);
     }
+    deleteShoppingLists(listIds).catch(err => {
+      console.error("Erro ao excluir listas em lote do Firestore:", err);
+    });
   };
 
   const handleImportLists = (imported: ShoppingList[]) => {
