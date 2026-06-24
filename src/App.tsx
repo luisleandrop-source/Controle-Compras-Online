@@ -504,7 +504,7 @@ export default function App() {
         </nav>
 
         {/* Desktop Sidebar Logout */}
-        <div className="pt-4 border-t border-slate-100">
+        <div className="pt-4 border-t border-slate-100 space-y-2">
           <button
             onClick={handleLogout}
             className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer text-slate-600 hover:bg-rose-50 hover:text-rose-600 transition-all text-left text-sm font-semibold"
@@ -512,6 +512,9 @@ export default function App() {
             <LogOut className="w-5 h-5" />
             <span>Sair</span>
           </button>
+          <div className="px-4 text-[10px] text-slate-400 font-mono text-center md:text-left">
+            Versão 1.1.0
+          </div>
         </div>
       </aside>
 
