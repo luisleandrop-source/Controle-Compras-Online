@@ -224,9 +224,9 @@ export default function App() {
           calculatedSpent = list.spent ?? 0;
         }
         
-        // Ensure category matches standardized list formatting
-        let cat = list.category || "Custos Diversos de Baixo Valor - Operacional - 16008";
-        if (!list.category) {
+        // Ensure category matches standardized list formatting (allow blank)
+        let cat = list.category !== undefined && list.category !== null ? list.category : "";
+        if (list.category === undefined || list.category === null) {
           listRepaired = true;
         }
 
@@ -313,8 +313,11 @@ export default function App() {
             cat = "Custos Diversos de Baixo Valor - Operacional - 16008";
           } else if (upper === "SERVIÇOS") {
             cat = "Consultorias - Operacional - 16011";
-          } else if (upper === "OUTROS" || !upper) {
+          } else if (upper === "OUTROS") {
             cat = "Custos Diversos de Baixo Valor - Operacional - 16008";
+          } else if (!upper) {
+            // Keep empty/blank as per user request
+            cat = "";
           }
         }
       }

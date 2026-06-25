@@ -357,9 +357,9 @@ export default function Lists({
             if (matched) {
               category = `${matched.description} - ${matched.code}`;
             }
-          }
-          if (!category) {
-            category = categories[0] ? `${categories[0].description} - ${categories[0].code}` : "Custos Diversos de Baixo Valor - Operacional - 16008";
+          } else {
+            // Keep empty as requested if it was blank in the spreadsheet
+            category = "";
           }
 
           const itemsRaw = getVal(["itens", "items", "itensadquiridos", "produtos", "produto", "produtosadquiridos", "descricaodositens", "detalhes"])?.toString() || "";
@@ -1135,6 +1135,7 @@ export default function Lists({
                               onChange={(e) => setEditCategory(e.target.value)}
                               className="bg-white border border-slate-300 rounded px-2 py-0.5 text-xs text-slate-800 font-medium max-w-[220px] focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
                             >
+                              <option value="">Sem classificação / em branco</option>
                               {categories.map((cat) => {
                                 const combined = `${cat.description} - ${cat.code}`;
                                 return (
@@ -1145,9 +1146,13 @@ export default function Lists({
                               })}
                             </select>
                           ) : (
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold ${renderCategoryBg(list.category)} hover:opacity-90 transition-opacity`} title={list.category}>
-                              🏷️ {list.category}
-                            </span>
+                            list.category ? (
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10.5px] font-bold ${renderCategoryBg(list.category)} hover:opacity-90 transition-opacity`} title={list.category}>
+                                🏷️ {list.category}
+                              </span>
+                            ) : (
+                              <span className="text-slate-400 font-normal italic text-xs">-</span>
+                            )
                           )}
                         </td>
 

@@ -332,73 +332,17 @@ export default function Dashboard({
         <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
         
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-indigo-500/30 text-indigo-300 text-[10px] font-bold tracking-wider uppercase rounded-full border border-indigo-400/20 flex items-center gap-1">
-                <Activity className="w-3 h-3 animate-pulse" />
+          <div className="space-y-2 w-full flex flex-col items-center text-center">
+            <div className="flex items-center gap-2 justify-center">
+              <span className="px-2.5 py-1 bg-slate-800/60 text-slate-300 text-[10px] font-semibold tracking-wider uppercase rounded-lg border border-slate-700/50 flex items-center gap-1.5">
+                <Activity className="w-3.5 h-3.5 text-indigo-400" />
                 Painel de Business Intelligence (BI)
               </span>
             </div>
-            <h1 className="text-3xl md:text-4xl font-serif font-semibold tracking-tight text-slate-100" style={{ fontFamily: "Playfair Display, Georgia, serif" }}>
-              Análise Geral & Auditoria de Compras
+            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-100" style={{ fontFamily: "Arial, sans-serif" }}>
+              Analise de Compras
             </h1>
-            <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-              Consolidação de dados para controle de compliance, fluxo de caixa operacional, distribuição por centro de custo e acompanhamento de metas financeiras.
-            </p>
-          </div>
 
-          {/* Analyst profile widget */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 min-w-[260px] self-start lg:self-auto">
-            <span className="text-[10px] font-bold text-indigo-300 uppercase tracking-widest block">Analista Responsável</span>
-            
-            {isEditingName ? (
-              <div className="flex items-center gap-2 mt-1.5">
-                <input
-                  type="text"
-                  value={tempName}
-                  onChange={(e) => setTempName(e.target.value)}
-                  className="bg-white/95 text-slate-900 px-2 py-1 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-400 w-full"
-                  placeholder="Nome do analista"
-                  autoFocus
-                />
-                <button 
-                  onClick={handleSaveName}
-                  className="p-1 bg-emerald-500 hover:bg-emerald-600 rounded-lg text-white transition-colors cursor-pointer"
-                >
-                  <Check className="w-3.5 h-3.5" />
-                </button>
-                <button 
-                  onClick={() => {
-                    setTempName(userProfileName);
-                    setIsEditingName(false);
-                  }}
-                  className="p-1 bg-rose-500 hover:bg-rose-600 rounded-lg text-white transition-colors cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between gap-4 mt-1.5">
-                <span className="text-sm font-bold text-white truncate max-w-[180px]">
-                  {userProfileName || "Analista de Suprimentos"}
-                </span>
-                <button
-                  onClick={() => setIsEditingName(true)}
-                  className="p-1.5 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition-all cursor-pointer"
-                  title="Editar nome do analista"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-            
-            <div className="border-t border-white/10 mt-3 pt-2.5 flex items-center justify-between text-[11px] text-slate-300 font-mono">
-              <span>Status da Sessão:</span>
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Autenticado
-              </span>
-            </div>
           </div>
         </div>
       </div>
