@@ -236,8 +236,8 @@ export default function Lists({
         "Fornecedor": list.fornecedor || list.name || "",
         "Classificação / Categoria Contábil": list.category || "",
         "Produtos": list.descricao || itemsStr || "",
-        "Parcelas": list.parcelas || 1,
         "Valor Total (R$)": list.spent,
+        "Parcelas": list.parcelas || 1,
         "Solicitante": list.solicitante || "Alex",
         "Setor": list.setor || "Tecnologia",
         "Centro de Custo": list.centroCusto || "CC-TI-42",
@@ -254,7 +254,7 @@ export default function Lists({
     XLSX.utils.book_append_sheet(workbook, worksheet, "Controle de Compras");
     
     // Auto-fit column widths
-    const maxProps = ["ID", "Data", "Fornecedor", "Classificação / Categoria Contábil", "Produtos", "Parcelas", "Valor Total (R$)", "Solicitante", "Setor", "Centro de Custo", "Final Cartão", "Previsão de Entrega", "Destino", "Descrição", "Status"];
+    const maxProps = ["ID", "Data", "Fornecedor", "Classificação / Categoria Contábil", "Produtos", "Valor Total (R$)", "Parcelas", "Solicitante", "Setor", "Centro de Custo", "Final Cartão", "Previsão de Entrega", "Destino", "Descrição", "Status"];
     const wscols = maxProps.map(prop => ({ wch: Math.max(prop.length + 3, 14) }));
     worksheet['!cols'] = wscols;
 
