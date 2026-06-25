@@ -48,12 +48,22 @@ export function listenShoppingLists(onUpdate: (lists: ShoppingList[]) => void) {
 }
 
 /**
+ * Safely removes or converts undefined values recursively from an object to satisfy Firestore SDK constraints.
+ */
+function sanitizeForFirestore<T>(obj: T): T {
+  return JSON.parse(JSON.stringify(obj, (_, value) => {
+    return value === undefined ? null : value;
+  })) as T;
+}
+
+/**
  * Saves or updates a single shopping list in Firestore
  */
 export async function saveShoppingList(list: ShoppingList) {
   try {
     const docRef = doc(db, "lists", list.id);
-    await setDoc(docRef, list);
+    const sanitized = sanitizeForFirestore(list);
+    await setDoc(docRef, sanitized);
   } catch (error) {
     console.error(`Erro ao salvar lista ${list.id} no Firestore:`, error);
     throw error;
@@ -98,7 +108,8 @@ export async function saveMultipleShoppingLists(lists: ShoppingList[]) {
     const batch = writeBatch(db);
     lists.forEach((list) => {
       const docRef = doc(db, "lists", list.id);
-      batch.set(docRef, list);
+      const sanitized = sanitizeForFirestore(list);
+      batch.set(docRef, sanitized);
     });
     await batch.commit();
   } catch (error) {

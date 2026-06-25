@@ -292,7 +292,7 @@ export default function App() {
   };
 
   // Sync utilities
-  const saveListsToStorage = (updatedList: ShoppingList[]) => {
+  const saveListsToStorage = (updatedList: ShoppingList[], skipFirestoreSync: boolean = false) => {
     // Add safety migration step to prevent any legacy categorisation leakages
     const migratedList = updatedList.map((list) => {
       let cat = list.category || "";
@@ -326,9 +326,11 @@ export default function App() {
 
     setShoppingLists(migratedList);
     localStorage.setItem("shopcontrol_lists", JSON.stringify(migratedList));
-    saveMultipleShoppingLists(migratedList).catch(err => {
-      console.error("Erro ao sincronizar listas com o Firestore:", err);
-    });
+    if (!skipFirestoreSync) {
+      saveMultipleShoppingLists(migratedList).catch(err => {
+        console.error("Erro ao sincronizar listas com o Firestore:", err);
+      });
+    }
   };
 
   const saveCategoriesToStorage = (updatedCats: AppCategory[]) => {
@@ -505,7 +507,7 @@ export default function App() {
 
   const handleDeleteList = (listId: string) => {
     const updated = shoppingLists.filter(list => list.id !== listId);
-    saveListsToStorage(updated);
+    saveListsToStorage(updated, true);
     if (selectedListId === listId) {
       setSelectedListId(null);
     }
@@ -516,7 +518,7 @@ export default function App() {
 
   const handleDeleteLists = (listIds: string[]) => {
     const updated = shoppingLists.filter(list => !listIds.includes(list.id));
-    saveListsToStorage(updated);
+    saveListsToStorage(updated, true);
     if (selectedListId && listIds.includes(selectedListId)) {
       setSelectedListId(null);
     }
