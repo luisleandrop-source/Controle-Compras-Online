@@ -55,6 +55,7 @@ export default function Dashboard({
   const [filterPeriod, setFilterPeriod] = useState<'all' | 'year' | 'month' | 'last_month'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'CONCLUÍDO' | 'PENDENTE'>('all');
   const [filterSector, setFilterSector] = useState<string>('all');
+  const [filterCategory, setFilterCategory] = useState<string>('all');
   const [distributionType, setDistributionType] = useState<'centroCusto' | 'setor'>('centroCusto');
   
   // Analyst Name Editing
@@ -66,6 +67,15 @@ export default function Dashboard({
     const list = new Set<string>();
     shoppingLists.forEach(l => {
       if (l.setor) list.add(l.setor.trim());
+    });
+    return Array.from(list).filter(Boolean).sort();
+  }, [shoppingLists]);
+
+  // Extract unique categories for filter
+  const categoriesList = useMemo(() => {
+    const list = new Set<string>();
+    shoppingLists.forEach(l => {
+      if (l.category) list.add(l.category.trim());
     });
     return Array.from(list).filter(Boolean).sort();
   }, [shoppingLists]);
@@ -86,8 +96,11 @@ export default function Dashboard({
       
       // 2. Sector Filter
       if (filterSector !== 'all' && list.setor !== filterSector) return false;
+
+      // 3. Category Filter
+      if (filterCategory !== 'all' && list.category !== filterCategory) return false;
       
-      // 3. Period Filter (Based on current simulated year 2026)
+      // 4. Period Filter (Based on current simulated year 2026)
       const dateStr = list.dataLancamento || list.date || "";
       if (filterPeriod === 'year') {
         if (!dateStr.startsWith("2026")) return false;
@@ -99,7 +112,7 @@ export default function Dashboard({
       
       return true;
     });
-  }, [shoppingLists, filterStatus, filterSector, filterPeriod]);
+  }, [shoppingLists, filterStatus, filterSector, filterCategory, filterPeriod]);
 
   // Current Month Specific calculations for Budget Progress Gauge
   const currentMonthSpent = useMemo(() => {
@@ -230,7 +243,7 @@ export default function Dashboard({
       }))
       .filter(item => item.spent > 0)
       .sort((a, b) => b.spent - a.spent)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [filteredLists]);
 
   // Chart 4: Expense Distribution by Accounting Classification
@@ -259,22 +272,7 @@ export default function Dashboard({
   const auditAlerts = useMemo(() => {
     const alerts: Array<{ type: 'warning' | 'info' | 'danger'; message: string; title: string }> = [];
 
-    // 1. Budget ceiling warning
-    if (budgetPercentage >= 90) {
-      alerts.push({
-        type: 'danger',
-        title: 'Limite Crítico de Gastos',
-        message: `As compras de Junho/26 atingiram ${budgetPercentage.toFixed(1)}% do limite planejado (${formatBRL(currentMonthSpent)} / ${formatBRL(monthlyLimit)}).`
-      });
-    } else if (budgetPercentage >= 75) {
-      alerts.push({
-        type: 'warning',
-        title: 'Alerta de Orçamento',
-        message: `As despesas deste mês estão em nível elevado: ${budgetPercentage.toFixed(1)}% do teto operacional atingido.`
-      });
-    }
-
-    // 2. Unassigned cost centers or missing supplier
+    // Unassigned cost centers or missing supplier
     let missingCCCount = 0;
     let missingSupplierCount = 0;
     let highInstallmentCount = 0;
@@ -318,11 +316,11 @@ export default function Dashboard({
     return alerts;
   }, [shoppingLists, budgetPercentage, currentMonthSpent, monthlyLimit]);
 
-  // Top 5 Largest transactions for deep drill-down
+  // Top 10 Largest transactions for deep drill-down
   const topTransactions = useMemo(() => {
     return [...filteredLists]
       .sort((a, b) => b.spent - a.spent)
-      .slice(0, 5);
+      .slice(0, 10);
   }, [filteredLists]);
 
   return (
@@ -471,13 +469,27 @@ export default function Dashboard({
             ))}
           </select>
 
+          {/* Category Selection */}
+          <select
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl focus:outline-none cursor-pointer transition-colors max-w-[220px] truncate"
+            title="Filtrar por classificação contábil / categoria"
+          >
+            <option value="all">Categoria: Todas</option>
+            {categoriesList.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
+          </select>
+
           {/* Reset Filters Shortcut */}
-          {(filterPeriod !== 'all' || filterStatus !== 'all' || filterSector !== 'all') && (
+          {(filterPeriod !== 'all' || filterStatus !== 'all' || filterSector !== 'all' || filterCategory !== 'all') && (
             <button
               onClick={() => {
                 setFilterPeriod('all');
                 setFilterStatus('all');
                 setFilterSector('all');
+                setFilterCategory('all');
               }}
               className="px-2.5 py-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-xl transition-all cursor-pointer"
             >
@@ -489,7 +501,7 @@ export default function Dashboard({
       </div>
 
       {/* SECTION 3: KEY PERFORMANCE INDICATORS (KPIs) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         
         {/* KPI 1: Total Desembolsado */}
         <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between min-h-[130px]">
@@ -559,35 +571,6 @@ export default function Dashboard({
             </span>
             <span className="text-[10px] text-slate-400 block mt-1 font-medium font-mono">
               {uniqueSuppliersCount} fornecedores ativos
-            </span>
-          </div>
-        </div>
-
-        {/* KPI 5: Meta de Orçamento Operacional */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-slate-400 tracking-tight uppercase">Meta Jun/26</span>
-            <span className="p-1.5 bg-rose-50 text-rose-600 rounded-lg">
-              <Layers className="w-4 h-4" />
-            </span>
-          </div>
-          <div className="mt-2">
-            <div className="flex justify-between items-baseline mb-1">
-              <span className="text-lg font-black text-slate-900">{budgetPercentage.toFixed(0)}%</span>
-              <span className="text-[9px] text-slate-400 font-mono">Max: {formatBRL(monthlyLimit)}</span>
-            </div>
-            {/* Custom styled progress bar */}
-            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
-              <div 
-                className={`h-full rounded-full transition-all duration-500 ${
-                  budgetPercentage >= 90 ? 'bg-rose-500' :
-                  budgetPercentage >= 75 ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
-              />
-            </div>
-            <span className="text-[9px] text-slate-400 block mt-1.5 leading-none">
-              Mes: {formatBRL(currentMonthSpent)}
             </span>
           </div>
         </div>
@@ -810,9 +793,9 @@ export default function Dashboard({
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
               <Truck className="w-4 h-4 text-indigo-500" />
-              Matriz de Concentração de Fornecedores (Top 5)
+              Matriz de Concentração de Fornecedores (Top 10)
             </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Top 5 fornecedores pelo montante total financeiro acumulado</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">Top 10 fornecedores pelo montante total financeiro acumulado</p>
           </div>
 
           <div className="h-64 mt-6 flex items-center justify-center">
@@ -963,7 +946,7 @@ export default function Dashboard({
           <div>
             <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
               <CreditCard className="w-4 h-4 text-indigo-500" />
-              Transações de Maior Impacto Financeiro (Top 5)
+              Transações de Maior Impacto Financeiro (Top 10)
             </h3>
             <p className="text-[11px] text-slate-400 mt-0.5">Análise prioritária dos desembolsos de maior valor. Clique em qualquer linha para auditar ou editar no Razão.</p>
           </div>

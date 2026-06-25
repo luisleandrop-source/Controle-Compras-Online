@@ -46,6 +46,8 @@ export default function App() {
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [isScanOpen, setIsScanOpen] = useState(false);
   const [isNewListModalOpen, setIsNewListModalOpen] = useState(false);
+  const [lastSavedPurchase, setLastSavedPurchase] = useState<{ name: string; budget: number } | null>(null);
+  const [consecutiveLaunchesCount, setConsecutiveLaunchesCount] = useState(0);
 
   // New list form parameters
   const [newListFormName, setNewListFormName] = useState("");
@@ -184,14 +186,22 @@ export default function App() {
           let itemRepaired = false;
           const updatedItem = { ...item };
           
-          if (typeof updatedItem.price !== 'number' || isNaN(updatedItem.price)) {
-            updatedItem.price = 0;
+          const priceNum = Number(updatedItem.price);
+          if (typeof updatedItem.price !== 'number' || isNaN(priceNum)) {
+            updatedItem.price = isNaN(priceNum) ? 0 : priceNum;
             itemRepaired = true;
+          } else {
+            updatedItem.price = priceNum;
           }
-          if (typeof updatedItem.quantity !== 'number' || isNaN(updatedItem.quantity)) {
-            updatedItem.quantity = 1;
+
+          const qtyNum = Number(updatedItem.quantity);
+          if (typeof updatedItem.quantity !== 'number' || isNaN(qtyNum)) {
+            updatedItem.quantity = isNaN(qtyNum) ? 1 : qtyNum;
             itemRepaired = true;
+          } else {
+            updatedItem.quantity = qtyNum;
           }
+
           if (!updatedItem.name) {
             updatedItem.name = "Item sem Nome";
             itemRepaired = true;
@@ -201,8 +211,18 @@ export default function App() {
           return updatedItem;
         });
 
-        // Recalculate spent values if discrepancy is found
-        const calculatedSpent = repairedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        // Recalculate spent values if discrepancy is found, respecting status and item counts
+        let calculatedSpent = list.spent;
+        if (repairedItems.length > 0) {
+          if (list.status === 'CONCLUÍDO') {
+            calculatedSpent = repairedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+          } else {
+            const checkedSum = repairedItems.filter(item => item.checked).reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            calculatedSpent = checkedSum > 0 ? checkedSum : (list.spent ?? 0);
+          }
+        } else {
+          calculatedSpent = list.spent ?? 0;
+        }
         
         // Ensure category matches standardized list formatting
         let cat = list.category || "Custos Diversos de Baixo Valor - Operacional - 16008";
@@ -398,6 +418,12 @@ export default function App() {
     }
   };
 
+  const handleOpenNewListModal = () => {
+    setLastSavedPurchase(null);
+    setConsecutiveLaunchesCount(0);
+    setIsNewListModalOpen(true);
+  };
+
   // State manipulation handlers
   const handleCreateList = (e: React.FormEvent) => {
     e.preventDefault();
@@ -452,24 +478,16 @@ export default function App() {
     setSelectedListId(newShoppingList.id);
     setActiveTab('lists');
 
-    // Reset inputs & close
+    // Reset ONLY purchase-specific fields so consecutive entries are incredibly fast!
     setNewListFormName("");
     setNewListFormBudget("");
-    setNewListFormCategory(categories[0] ? `${categories[0].description} - ${categories[0].code}` : "");
-    setNewListFormParcelas("1");
-    setNewListFormSolicitante(userProfileName || "User");
-    setNewListFormSetor("Tecnologia");
-    setNewListFormCentroCusto("CC-TI-42");
-    setNewListFormFinalCartao("9876");
-    const todayStr = (() => {
-      const d = new Date();
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    })();
-    setNewListFormEntrega(todayStr);
-    setNewListFormDataLancamento(todayStr);
-    setNewListFormDestino("Almoxarifado Central");
     setNewListFormDescricao("");
-    setIsNewListModalOpen(false);
+    
+    // Set success state for consecutive launches
+    setLastSavedPurchase({ name: newShoppingList.name, budget: budgetVal });
+    setConsecutiveLaunchesCount(prev => prev + 1);
+    
+    // Do NOT call setIsNewListModalOpen(false) to keep the modal open for the next purchase
   };
 
   const handleUpdateList = (updatedList: ShoppingList) => {
@@ -807,7 +825,7 @@ export default function App() {
               monthlyIncome={monthlyIncome}
               onNavigate={setActiveTab}
               onOpenScan={() => setIsScanOpen(true)}
-              onOpenNewListModal={() => setIsNewListModalOpen(true)}
+              onOpenNewListModal={handleOpenNewListModal}
               onSelectList={(list) => {
                 setSelectedListId(list.id);
                 setActiveTab('lists');
@@ -830,7 +848,7 @@ export default function App() {
               onImportLists={handleImportLists}
               selectedListId={selectedListId}
               onSelectList={(list) => setSelectedListId(list ? list.id : null)}
-              onOpenNewListModal={() => setIsNewListModalOpen(true)}
+              onOpenNewListModal={handleOpenNewListModal}
               onNavigate={setActiveTab}
               onLogout={handleLogout}
               userProfileName={userProfileName}
@@ -926,10 +944,32 @@ export default function App() {
               <button 
                 onClick={() => setIsNewListModalOpen(false)}
                 className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                title="Fechar guia de lançamento"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {lastSavedPurchase && (
+              <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-4 flex items-center justify-between animate-in fade-in slide-in-from-top-3 duration-200">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                    <CheckCircle2 className="w-4.5 h-4.5" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-xs">
+                      Lançamento #{consecutiveLaunchesCount} efetuado com sucesso!
+                    </p>
+                    <p className="text-[11px] text-emerald-700 font-medium">
+                      "{lastSavedPurchase.name}" no valor de R$ {lastSavedPurchase.budget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} foi registrado no controle.
+                    </p>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-emerald-100/75 text-emerald-800 font-extrabold px-2.5 py-1 rounded-lg uppercase tracking-wider">
+                  Guia Aberta para Próxima Compra
+                </span>
+              </div>
+            )}
 
             <form onSubmit={handleCreateList} className="space-y-6">
               {/* Product description (Descrição do Produto) */}
@@ -1167,21 +1207,38 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-4 pt-4 border-t border-slate-100 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setIsNewListModalOpen(false)}
-                  className="px-6 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-center transition-all cursor-pointer min-w-[120px]"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl text-center cursor-pointer transition-all active:scale-98 duration-100 shadow-md hover:shadow-lg min-w-[170px]"
-                >
-                  Criar Lançamento
-                </button>
+              {/* Action Buttons & Succession launch helper notice */}
+              <div className="flex flex-col sm:flex-row justify-between items-center pt-5 border-t border-slate-100 gap-4">
+                <span className="text-[11px] text-slate-500 font-medium">
+                  {consecutiveLaunchesCount > 0 ? (
+                    <span className="text-emerald-600 font-bold flex items-center gap-1.5 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      ✓ {consecutiveLaunchesCount} {consecutiveLaunchesCount === 1 ? "compra lançada" : "compras lançadas"} nesta sessão. Guia permanece aberta.
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">
+                      * A guia continuará aberta para você lançar a próxima compra na sequência.
+                    </span>
+                  )}
+                </span>
+                <div className="flex gap-3 w-full sm:w-auto justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setIsNewListModalOpen(false)}
+                    className="px-6 py-3 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-center transition-all cursor-pointer min-w-[140px]"
+                  >
+                    {consecutiveLaunchesCount > 0 ? "Concluir e Fechar" : "Cancelar"}
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl text-center cursor-pointer transition-all active:scale-98 duration-100 shadow-md hover:shadow-lg min-w-[180px]"
+                  >
+                    Lançar Compra
+                  </button>
+                </div>
               </div>
             </form>
           </div>
