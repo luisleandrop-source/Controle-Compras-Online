@@ -1,6 +1,7 @@
 import express from "express";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import { getEmailSettings, saveEmailSettings, sendDailyReport, runBackgroundScheduler } from "./emailService.js";
 
 dotenv.config();
 
@@ -9,6 +10,12 @@ const app = express();
 // Set up body parsers with limits for base64 images
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
+
+// Start background task scheduler for email reports (check every 5 minutes)
+runBackgroundScheduler().catch(err => console.error("Erro na inicialização do agendador:", err));
+setInterval(() => {
+  runBackgroundScheduler().catch(err => console.error("Erro na execução do agendador:", err));
+}, 5 * 60 * 1000);
 
 // Initialize Gemini Client safely
 let ai: GoogleGenAI | null = null;
@@ -39,6 +46,37 @@ app.get("/api/health", (req, res) => {
     simulationMode: !ai,
     time: new Date().toISOString()
   });
+});
+
+// GET Email Settings
+app.get("/api/settings/email", async (req, res) => {
+  try {
+    const settings = await getEmailSettings();
+    res.json(settings);
+  } catch (error: any) {
+    res.status(500).json({ error: "Erro ao buscar configurações de e-mail.", details: error.message || error });
+  }
+});
+
+// POST Save Email Settings
+app.post("/api/settings/email", async (req, res) => {
+  try {
+    const updated = await saveEmailSettings(req.body);
+    res.json(updated);
+  } catch (error: any) {
+    res.status(500).json({ error: "Erro ao salvar configurações de e-mail.", details: error.message || error });
+  }
+});
+
+// POST Trigger Email Report Manual Send
+app.post("/api/send-report", async (req, res) => {
+  try {
+    const force = req.query.force === "true" || req.body.force === true;
+    const result = await sendDailyReport(force);
+    res.json(result);
+  } catch (error: any) {
+    res.status(500).json({ error: "Erro ao processar envio de relatório.", details: error.message || error });
+  }
 });
 
 // Scan Request Handler

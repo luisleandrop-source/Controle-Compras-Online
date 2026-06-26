@@ -2,7 +2,8 @@ import React, { useState, useMemo } from "react";
 import { 
   ArrowLeft, Package, DollarSign, TrendingUp, Truck, Users, Tag, Calendar, 
   ShieldCheck, CreditCard, Activity, Layers, Filter, CheckCircle2, Clock, 
-  Plus, ScanLine, Edit2, AlertTriangle, FileSpreadsheet, Check, X, ChevronRight, BarChart3, PieChart as PieChartIcon
+  Plus, ScanLine, Edit2, AlertTriangle, FileSpreadsheet, Check, X, ChevronRight, BarChart3, PieChart as PieChartIcon,
+  Mail, Send, RefreshCw
 } from "lucide-react";
 import { 
   ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, 
@@ -61,6 +62,109 @@ export default function Dashboard({
   // Analyst Name Editing
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(userProfileName);
+
+  // Email Settings & Integration State
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [recipientEmail, setRecipientEmail] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("08:00");
+  const [smtpHost, setSmtpHost] = useState("");
+  const [smtpPort, setSmtpPort] = useState(587);
+  const [smtpUser, setSmtpUser] = useState("");
+  const [smtpPass, setSmtpPass] = useState("");
+  const [smtpSecure, setSmtpSecure] = useState(false);
+  const [emailLogs, setEmailLogs] = useState<any[]>([]);
+  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [isSavingEmail, setIsSavingEmail] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [emailStatusMsg, setEmailStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+
+  React.useEffect(() => {
+    fetchEmailSettings();
+  }, []);
+
+  const fetchEmailSettings = async () => {
+    setIsLoadingEmail(true);
+    try {
+      const res = await fetch("/api/settings/email");
+      if (res.ok) {
+        const data = await res.json();
+        setEmailEnabled(data.enabled);
+        setRecipientEmail(data.recipientEmail || "");
+        setScheduledTime(data.scheduledTime || "08:00");
+        setSmtpHost(data.smtpHost || "");
+        setSmtpPort(data.smtpPort || 587);
+        setSmtpUser(data.smtpUser || "");
+        setSmtpPass(data.smtpPass || "");
+        setSmtpSecure(data.smtpSecure || false);
+        setEmailLogs(data.logs || []);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar configurações de e-mail:", err);
+    } finally {
+      setIsLoadingEmail(false);
+    }
+  };
+
+  const handleSaveEmailSettings = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setIsSavingEmail(true);
+    setEmailStatusMsg(null);
+    try {
+      const res = await fetch("/api/settings/email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: emailEnabled,
+          recipientEmail,
+          scheduledTime,
+          smtpHost,
+          smtpPort: Number(smtpPort),
+          smtpUser,
+          smtpPass,
+          smtpSecure
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setEmailLogs(data.logs || []);
+        setEmailStatusMsg({ type: 'success', text: 'Configurações de e-mail salvas com sucesso!' });
+      } else {
+        setEmailStatusMsg({ type: 'error', text: 'Falha ao salvar as configurações.' });
+      }
+    } catch (err: any) {
+      setEmailStatusMsg({ type: 'error', text: err.message || 'Erro de conexão.' });
+    } finally {
+      setIsSavingEmail(false);
+    }
+  };
+
+  const handleTestEmailSend = async () => {
+    setIsTestingEmail(true);
+    setEmailStatusMsg({ type: 'info', text: 'Processando envio de relatório de teste...' });
+    try {
+      const res = await fetch("/api/send-report?force=true", {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (data.success) {
+        setEmailStatusMsg({ 
+          type: 'success', 
+          text: data.simulated 
+            ? 'Envio SIMULADO realizado com sucesso! (Modo Simulação Ativo - Ver logs abaixo)' 
+            : 'E-mail real enviado com sucesso para o destinatário!' 
+        });
+        await fetchEmailSettings();
+      } else {
+        setEmailStatusMsg({ type: 'error', text: data.message || 'Erro ao enviar e-mail.' });
+      }
+    } catch (err: any) {
+      setEmailStatusMsg({ type: 'error', text: err.message || 'Erro de conexão ao enviar.' });
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
+  const [showSmtpConfig, setShowSmtpConfig] = useState(false);
 
   // Extract unique sectors for filter
   const sectorsList = useMemo(() => {
@@ -960,6 +1064,290 @@ export default function Dashboard({
           </div>
         </div>
 
+      </div>
+
+      {/* SECTION 6: DAILY EMAIL REPORTS INTEGRATION */}
+      <div className="mt-8 bg-slate-50/50 border border-slate-100 rounded-3xl p-6 shadow-2xs space-y-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-3xs shrink-0">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Integração e Relatórios Diários por E-mail</h3>
+              <p className="text-xs text-slate-500">Envie de forma automática ou sob demanda o resumo consolidado de lançamentos e orçamentos corporativos</p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={fetchEmailSettings}
+              disabled={isLoadingEmail}
+              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"
+              title="Recarregar dados"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoadingEmail ? 'animate-spin' : ''}`} />
+            </button>
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold font-mono tracking-wide uppercase ${
+              emailEnabled 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                : 'bg-slate-100 text-slate-500 border border-slate-200/50'
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${emailEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+              {emailEnabled ? "Relatório Ativo" : "Desativado"}
+            </span>
+          </div>
+        </div>
+
+        {emailStatusMsg && (
+          <div className={`p-4 rounded-2xl border text-xs flex items-start gap-3 shadow-3xs ${
+            emailStatusMsg.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' :
+            emailStatusMsg.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' :
+            'bg-indigo-50 border-indigo-100 text-indigo-800'
+          }`}>
+            <div className="shrink-0 font-bold">
+              {emailStatusMsg.type === 'success' ? '✓' : emailStatusMsg.type === 'error' ? '⚠' : 'ℹ'}
+            </div>
+            <div className="font-semibold leading-normal">{emailStatusMsg.text}</div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* Email Settings Controller (7 cols) */}
+          <form onSubmit={handleSaveEmailSettings} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-2xs lg:col-span-7 space-y-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl">
+                <div>
+                  <h4 className="text-xs font-bold text-slate-900">Ativar Disparo Automático Diário</h4>
+                  <p className="text-[10px] text-slate-500">O servidor executará a varredura e enviará o e-mail no horário programado</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={emailEnabled}
+                    onChange={(e) => setEmailEnabled(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">E-mail Destinatário</label>
+                  <input
+                    type="email"
+                    required
+                    value={recipientEmail}
+                    onChange={(e) => setRecipientEmail(e.target.value)}
+                    placeholder="exemplo@empresa.com"
+                    className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Horário de Envio</label>
+                  <input
+                    type="time"
+                    required
+                    value={scheduledTime}
+                    onChange={(e) => setScheduledTime(e.target.value)}
+                    className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Collapsible SMTP Server Settings */}
+            <div className="border-t border-slate-100 pt-4">
+              <button
+                type="button"
+                onClick={() => setShowSmtpConfig(!showSmtpConfig)}
+                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 focus:outline-none"
+              >
+                <span>{showSmtpConfig ? "▲ Ocultar" : "▼ Exibir"} Configurações do Servidor SMTP (E-mails Reais)</span>
+              </button>
+
+              {showSmtpConfig && (
+                <div className="mt-4 p-4 bg-slate-50 border border-slate-150 rounded-2xl space-y-4 animate-fadeIn">
+                  <p className="text-[10px] text-slate-500 leading-relaxed">
+                    Se você deixar o SMTP em branco, o sistema funcionará no <strong>Modo Simulado</strong>, gerando o relatório na íntegra e gravando o envio com sucesso nos logs do banco de dados (ideal para testes). Forneça as credenciais abaixo para habilitar o envio real.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
+                    <div className="md:col-span-8">
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Host SMTP</label>
+                      <input
+                        type="text"
+                        placeholder="smtp.gmail.com ou smtp.sendgrid.net"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div className="md:col-span-4">
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Porta SMTP</label>
+                      <input
+                        type="number"
+                        placeholder="587"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(Number(e.target.value))}
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Usuário / Remetente</label>
+                      <input
+                        type="text"
+                        placeholder="seu-email@gmail.com"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Senha SMTP / Token</label>
+                      <input
+                        type="password"
+                        placeholder="••••••••••••••••"
+                        value={smtpPass}
+                        onChange={(e) => setSmtpPass(e.target.value)}
+                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                      />
+                      <span className="text-[9px] text-indigo-600 font-bold block mt-1">
+                        * Não digite sua senha de login normal. Use a Senha de App de 16 letras (veja o guia passo a passo ao lado).
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="smtpSecure"
+                      checked={smtpSecure}
+                      onChange={(e) => setSmtpSecure(e.target.checked)}
+                      className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500"
+                    />
+                    <label htmlFor="smtpSecure" className="text-[10px] text-slate-600 font-medium">Usar conexão segura SSL/TLS (Normalmente para porta 465)</label>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Actions Panel */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+              <button
+                type="button"
+                disabled={isTestingEmail || isLoadingEmail}
+                onClick={handleTestEmailSend}
+                className="h-11 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-3xs cursor-pointer active:scale-98 disabled:opacity-50 transition-all shrink-0"
+              >
+                <Send className={`w-4 h-4 ${isTestingEmail ? 'animate-pulse' : ''}`} />
+                {isTestingEmail ? "Enviando..." : "Disparar Teste Agora"}
+              </button>
+
+              <button
+                type="submit"
+                disabled={isSavingEmail || isLoadingEmail}
+                className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-2xs hover:shadow-md cursor-pointer active:scale-98 disabled:opacity-50 transition-all shrink-0"
+              >
+                {isSavingEmail ? "Salvando..." : "Salvar Configuração"}
+              </button>
+            </div>
+          </form>
+
+          {/* Email dispatch logs & info (5 cols) */}
+          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-2xs lg:col-span-5 flex flex-col justify-between space-y-6">
+            <div>
+              <h4 className="text-xs font-bold text-slate-950 flex items-center gap-1.5 mb-1.5">
+                <Clock className="w-4 h-4 text-slate-500" />
+                Histórico de Envio e Logs do Sistema
+              </h4>
+              <p className="text-[10px] text-slate-500">Últimos disparos de e-mail monitorados pelo sistema de automação corporativo</p>
+            </div>
+
+            <div className="flex-1 max-h-[250px] overflow-y-auto space-y-2.5 pr-1 scrollbar-thin">
+              {emailLogs.length > 0 ? (
+                emailLogs.map((log, idx) => {
+                  const formattedLogDate = new Date(log.timestamp).toLocaleString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    second: "2-digit"
+                  });
+                  return (
+                    <div key={idx} className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-1.5 text-[11px] leading-relaxed">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-[9.5px] text-slate-400 font-medium">{formattedLogDate}</span>
+                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[8.5px] font-bold font-mono uppercase tracking-wider ${
+                          log.status === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                          log.status === "simulated" ? "bg-amber-50 text-amber-700 border border-amber-100" :
+                          "bg-rose-50 text-rose-700 border border-rose-100"
+                        }`}>
+                          {log.status === "success" ? "Real" : log.status === "simulated" ? "Simulado" : "Erro"}
+                        </span>
+                      </div>
+                      <p className="text-slate-700 font-medium break-words">{log.message}</p>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-center py-10 text-slate-400 italic text-[11px]">
+                  Nenhum registro de e-mail disparado encontrado.
+                </div>
+              )}
+            </div>
+
+            {/* Quick guide */}
+            <div className="p-4 bg-indigo-50/60 border border-indigo-150 rounded-2xl text-xs text-indigo-950 space-y-3">
+              <div>
+                <span className="font-bold text-sm block mb-1 flex items-center gap-1.5">
+                  🔑 Guia Passo a Passo: Gerar Senha de App no Gmail
+                </span>
+                <p className="text-[11px] leading-normal opacity-90 text-indigo-900">
+                  O Google exige uma <strong>Senha de App (16 caracteres)</strong> exclusiva e segura para que aplicativos de terceiros acessem o SMTP. Siga os passos abaixo na sua conta Google para criar uma:
+                </p>
+              </div>
+
+              <ol className="list-decimal list-inside space-y-1.5 text-[11px] pl-1 font-medium text-indigo-900/90">
+                <li>
+                  Acesse sua <a href="https://myaccount.google.com" target="_blank" rel="noopener noreferrer" className="underline font-bold text-indigo-700 hover:text-indigo-900">Conta Google</a>.
+                </li>
+                <li>
+                  No painel lateral esquerdo, clique em <strong className="text-indigo-950">Segurança</strong>.
+                </li>
+                <li>
+                  Certifique-se de que a <strong className="text-indigo-950">Verificação em duas etapas</strong> esteja <span className="text-emerald-700 font-bold">Ativada</span>. Se não estiver, ative-a primeiro.
+                </li>
+                <li>
+                  Na barra de pesquisa no topo da página de Conta Google, digite <code className="bg-white/70 px-1 py-0.5 rounded font-mono text-xs">Senhas de app</code> e selecione o resultado correspondente.
+                </li>
+                <li>
+                  Insira um nome identificador para o aplicativo (por exemplo: <code className="bg-white/70 px-1 py-0.5 rounded font-mono text-xs">ShopControl</code>) e clique em <strong className="text-indigo-950">Criar</strong>.
+                </li>
+                <li>
+                  Uma janela popup abrirá mostrando um código de <strong className="text-amber-800 font-extrabold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">16 letras amarelas</strong>.
+                </li>
+                <li>
+                  <strong>Copie essas 16 letras</strong> (sem os espaços) e cole diretamente no campo <strong className="text-indigo-950">"Senha SMTP / Token"</strong> ao lado!
+                </li>
+              </ol>
+
+              <div className="pt-2 border-t border-indigo-100/50 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px] font-mono font-bold text-indigo-800">
+                <span>Servidor: <code className="bg-white/50 px-1 rounded">smtp.gmail.com</code></span>
+                <span>Porta: <code className="bg-white/50 px-1 rounded">587</code></span>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
