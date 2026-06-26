@@ -4,14 +4,15 @@ import {
   Check, Square, CheckSquare, Sparkles, Wrench, Tv, Gamepad2, 
   Receipt, Utensils, CreditCard, ChevronLeft, PlusCircle, AlertTriangle,
   User, Building, Folder, Calendar, Truck, MapPin, Layers, Hash,
-  Pencil, Eye, FileSpreadsheet, Download, Upload, LogOut
+  Pencil, Eye, FileSpreadsheet, Download, Upload, LogOut, ChevronUp, ChevronDown,
+  DollarSign
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { ShoppingList, ShoppingItem, CategoryType, AppCategory } from "../types";
 
 interface ListsProps {
   shoppingLists: ShoppingList[];
-  onCreateList: (name: string, budget: number, category: CategoryType) => void;
+  onCreateList: (newList: ShoppingList) => void;
   onUpdateList: (updatedList: ShoppingList) => void;
   onDeleteList: (listId: string) => void;
   onDeleteLists?: (listIds: string[]) => void;
@@ -754,9 +755,10 @@ export default function Lists({
             </div>
           </div>
 
-          {/* Button Actions Toolbar */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-2">
-            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+          {/* Painel de Lançamentos */}
+          <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-6">
+            {/* Button Actions Toolbar */}
+            <div className="flex flex-wrap items-center gap-2.5 w-full">
               <button
                 onClick={onOpenNewListModal}
                 className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-lg text-xs shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-95"
@@ -818,158 +820,145 @@ export default function Lists({
               )}
             </div>
 
-            <div className="flex items-center gap-2 w-full md:w-auto justify-end">
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="bg-white border border-slate-200 text-slate-700 text-xs font-medium px-3 py-2 rounded-lg cursor-pointer focus:outline-hidden"
-              >
-                <option value={10}>10 por página</option>
-                <option value={20}>20 por página</option>
-                <option value={50}>50 por página</option>
-                <option value={100}>100 por página</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Filtros Container */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Filtros Avançados</span>
-              {(filterFornecedor || filterCentroCusto !== "All" || filterDestino || filterRequisitor || searchTerm || filterCategory !== "All" || filterStartDate || filterEndDate) && (
-                <button
-                  onClick={() => {
-                    setFilterFornecedor("");
-                    setFilterCentroCusto("All");
-                    setFilterDestino("");
-                    setFilterRequisitor("");
-                    setSearchTerm("");
-                    setFilterCategory("All");
-                    setFilterStartDate("");
-                    setFilterEndDate("");
-                  }}
-                  className="text-[11px] font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                  <span>Limpar Filtros</span>
-                </button>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-              {/* 1. Busca de Produtos */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
-                  <Search className="w-3 h-3 text-slate-400" />
-                  Buscar Produto
-                </label>
-                <input
-                  type="text"
-                  placeholder="Pesquisar produto ou item..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
-                />
+            {/* Filtros Container */}
+            <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Filtros Avançados</span>
+                {(filterFornecedor || filterCentroCusto !== "All" || filterDestino || filterRequisitor || searchTerm || filterCategory !== "All" || filterStartDate || filterEndDate) && (
+                  <button
+                    onClick={() => {
+                      setFilterFornecedor("");
+                      setFilterCentroCusto("All");
+                      setFilterDestino("");
+                      setFilterRequisitor("");
+                      setSearchTerm("");
+                      setFilterCategory("All");
+                      setFilterStartDate("");
+                      setFilterEndDate("");
+                    }}
+                    className="text-[11px] font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>Limpar Filtros</span>
+                  </button>
+                )}
               </div>
 
-              {/* 2. Fornecedor */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fornecedor</label>
-                <input
-                  type="text"
-                  placeholder="Filtrar por fornecedor"
-                  value={filterFornecedor}
-                  onChange={(e) => setFilterFornecedor(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
-                />
-              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                {/* 1. Busca de Produtos */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                    <Search className="w-3 h-3 text-slate-400" />
+                    Buscar Produto
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Pesquisar produto ou item..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
 
-              {/* 3. Classificação Contábil */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Classificação Contábil</label>
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
-                >
-                  <option value="All">Todas as Categorias</option>
-                  {categories.map((cat) => {
-                    const combined = `${cat.description} - ${cat.code}`;
-                    return (
-                      <option key={cat.id} value={combined}>
-                        {combined}
+                {/* 2. Fornecedor */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fornecedor</label>
+                  <input
+                    type="text"
+                    placeholder="Filtrar por fornecedor"
+                    value={filterFornecedor}
+                    onChange={(e) => setFilterFornecedor(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+
+                {/* 3. Classificação Contábil */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Classificação Contábil</label>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
+                  >
+                    <option value="All">Todas as Categorias</option>
+                    {categories.map((cat) => {
+                      const combined = `${cat.description} - ${cat.code}`;
+                      return (
+                        <option key={cat.id} value={combined}>
+                          {combined}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* 4. Centro de Custo */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Centro de Custo</label>
+                  <select
+                    value={filterCentroCusto}
+                    onChange={(e) => setFilterCentroCusto(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
+                  >
+                    <option value="All">Todos os Centros</option>
+                    {uniqueCentros.map((cc) => (
+                      <option key={cc} value={cc}>
+                        {cc}
                       </option>
-                    );
-                  })}
-                </select>
-              </div>
+                    ))}
+                  </select>
+                </div>
 
-              {/* 4. Centro de Custo */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Centro de Custo</label>
-                <select
-                  value={filterCentroCusto}
-                  onChange={(e) => setFilterCentroCusto(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
-                >
-                  <option value="All">Todos os Centros</option>
-                  {uniqueCentros.map((cc) => (
-                    <option key={cc} value={cc}>
-                      {cc}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                {/* 5. Solicitante */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Solicitante</label>
+                  <input
+                    type="text"
+                    placeholder="Filtrar por solicitante"
+                    value={filterRequisitor}
+                    onChange={(e) => setFilterRequisitor(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
 
-              {/* 5. Solicitante */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Solicitante</label>
-                <input
-                  type="text"
-                  placeholder="Filtrar por solicitante"
-                  value={filterRequisitor}
-                  onChange={(e) => setFilterRequisitor(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
-                />
-              </div>
+                {/* 6. Destino */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Destino</label>
+                  <input
+                    type="text"
+                    placeholder="Filtrar por destino"
+                    value={filterDestino}
+                    onChange={(e) => setFilterDestino(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
 
-              {/* 6. Destino */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Destino</label>
-                <input
-                  type="text"
-                  placeholder="Filtrar por destino"
-                  value={filterDestino}
-                  onChange={(e) => setFilterDestino(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
-                />
-              </div>
+                {/* 7. Período: Início */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">DATA INICIAL</label>
+                  <input
+                    type="date"
+                    value={filterStartDate}
+                    onChange={(e) => setFilterStartDate(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
+                  />
+                </div>
 
-              {/* 7. Período: Início */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">DATA INICIAL</label>
-                <input
-                  type="date"
-                  value={filterStartDate}
-                  onChange={(e) => setFilterStartDate(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
-                />
-              </div>
-
-              {/* 8. Período: Até */}
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">DATA FINAL</label>
-                <input
-                  type="date"
-                  value={filterEndDate}
-                  onChange={(e) => setFilterEndDate(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
-                />
+                {/* 8. Período: Até */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">DATA FINAL</label>
+                  <input
+                    type="date"
+                    value={filterEndDate}
+                    onChange={(e) => setFilterEndDate(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-hidden focus:border-indigo-500 transition-colors cursor-pointer"
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Main Table Container */}
+          {/* Painel de Listagem de Compras */}
           {(() => {
             const totalPages = Math.ceil(filteredLists.length / pageSize) || 1;
             const startIndex = (currentPage - 1) * pageSize;
@@ -977,7 +966,40 @@ export default function Lists({
             const paginatedLists = filteredLists.slice(startIndex, endIndex);
 
             return (
-              <div className="bg-white border border-slate-100 rounded-2xl shadow-2xs overflow-hidden">
+              <div className="bg-white border border-slate-200/80 rounded-2xl shadow-2xs overflow-hidden mt-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 border-b border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                      <FileSpreadsheet className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h2 className="text-base font-bold text-slate-900">Listagem de Compras</h2>
+                      <p className="text-xs text-slate-500">Planilha detalhada de todos os lançamentos corporativos</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {selectedIds.length > 0 && (
+                      <span className="bg-rose-50 text-rose-700 text-xs font-bold px-3 py-1.5 rounded-full">
+                        {selectedIds.length} selecionado(s)
+                      </span>
+                    )}
+                    <span className="bg-emerald-100/70 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
+                      <span>{filteredLists.length}</span>
+                      <span className="font-normal text-[10px] text-emerald-700">registros</span>
+                    </span>
+                    <select
+                      value={pageSize}
+                      onChange={(e) => setPageSize(Number(e.target.value))}
+                      className="bg-white border border-slate-200 text-slate-700 text-xs font-medium px-3 py-1.5 rounded-lg cursor-pointer focus:outline-hidden"
+                    >
+                      <option value={10}>10 por página</option>
+                      <option value={20}>20 por página</option>
+                      <option value={50}>50 por página</option>
+                      <option value={100}>100 por página</option>
+                    </select>
+                  </div>
+                </div>
+
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse min-w-[1550px]">
                     <thead className="bg-slate-50/70 text-[10px] uppercase font-bold tracking-wider text-slate-500 border-b border-slate-100">

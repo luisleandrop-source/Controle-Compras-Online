@@ -9,6 +9,7 @@ import { ShoppingList, ShoppingItem, CategoryType, AppCategory, INITIAL_APP_CATE
 import Dashboard from "./components/Dashboard";
 import Lists from "./components/Lists";
 import Categories from "./components/Categories";
+import NewPurchase from "./components/NewPurchase";
 import ScanReceiptModal from "./components/ScanReceiptModal";
 import { 
   listenShoppingLists, 
@@ -35,7 +36,7 @@ export default function App() {
   const [loginPassword, setLoginPassword] = useState("");
   const [loginError, setLoginError] = useState("");
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'lists' | 'categories'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'nova-compra' | 'dashboard' | 'lists' | 'categories'>('dashboard');
   const [userProfileName, setUserProfileName] = useState("User");
   const [shoppingLists, setShoppingLists] = useState<ShoppingList[]>([]);
   const [categories, setCategories] = useState<AppCategory[]>([]);
@@ -656,6 +657,21 @@ export default function App() {
 
         <nav className="flex-1 space-y-2">
           <button
+            onClick={() => {
+              setActiveTab('nova-compra');
+              setSelectedListId(null);
+            }}
+            className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer transition-all text-left text-sm font-semibold ${
+              activeTab === 'nova-compra'
+                ? "bg-brand-secondary-container text-brand-on-secondary-container"
+                : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
+            }`}
+          >
+            <PlusCircle className={`w-5 h-5 ${activeTab === 'nova-compra' ? 'text-brand-on-secondary-container' : 'text-emerald-600'}`} />
+            <span>Nova Compra</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('lists')}
             className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl cursor-pointer transition-all text-left text-sm font-semibold ${
               activeTab === 'lists'
@@ -776,7 +792,7 @@ export default function App() {
               <span className="text-slate-400">Plataforma</span>
               <span className="text-slate-300">/</span>
               <span className="text-brand-primary font-bold">
-                {activeTab === 'dashboard' ? 'Painel Geral' : activeTab === 'lists' ? 'Lançamentos' : 'Categorias'}
+                {activeTab === 'nova-compra' ? 'Nova Compra' : activeTab === 'dashboard' ? 'Painel Geral' : activeTab === 'lists' ? 'Lançamentos' : 'Categorias'}
               </span>
             </div>
           </div>
@@ -823,6 +839,20 @@ export default function App() {
 
         {/* Primary tab workspace */}
         <main className="flex-1 w-full max-w-[1650px] mx-auto px-4 md:px-8 py-8 pb-32 md:pb-12 bg-slate-50/50">
+          {activeTab === 'nova-compra' && (
+            <NewPurchase
+              categories={categories}
+              onCreateList={(newList) => {
+                const updatedLists = [newList, ...shoppingLists];
+                saveListsToStorage(updatedLists);
+                setSelectedListId(newList.id);
+                setActiveTab('lists');
+              }}
+              userProfileName={userProfileName}
+              onNavigateToLists={() => setActiveTab('lists')}
+            />
+          )}
+
           {activeTab === 'dashboard' && (
             <Dashboard
               shoppingLists={shoppingLists}
@@ -844,8 +874,10 @@ export default function App() {
             <Lists
               shoppingLists={shoppingLists}
               categories={categories}
-              onCreateList={(name, budget, cat) => {
-                // Direct state interface handle
+              onCreateList={(newList) => {
+                const updatedLists = [newList, ...shoppingLists];
+                saveListsToStorage(updatedLists);
+                setSelectedListId(newList.id);
               }}
               onUpdateList={handleUpdateList}
               onDeleteList={handleDeleteList}
@@ -883,6 +915,22 @@ export default function App() {
 
       {/* Static premium bottom navigational bar */}
       <nav className="fixed bottom-0 left-0 right-0 w-full h-20 flex justify-around items-center bg-white border-t border-slate-200 shadow-[0px_-4px_20px_rgba(15,23,42,0.06)] z-50 rounded-t-2xl md:hidden">
+        {/* Nova Compra Nav Item */}
+        <button
+          onClick={() => {
+            setActiveTab('nova-compra');
+            setSelectedListId(null);
+          }}
+          className={`flex flex-col items-center justify-center gap-1 py-1 px-4 rounded-full transition-all duration-150 active:scale-95 ${
+            activeTab === 'nova-compra'
+              ? "bg-brand-secondary-container text-brand-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-low"
+          }`}
+        >
+          <PlusCircle className={`w-5 h-5 ${activeTab === 'nova-compra' ? 'text-brand-on-secondary-container' : 'text-emerald-600'}`} />
+          <span className="font-sans text-[10px] font-semibold leading-none">Nova Compra</span>
+        </button>
+
         {/* Lists Nav Item */}
         <button
           onClick={() => setActiveTab('lists')}
