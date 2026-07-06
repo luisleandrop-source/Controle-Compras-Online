@@ -259,7 +259,13 @@ export default function Lists({
     const wscols = maxProps.map(prop => ({ wch: Math.max(prop.length + 3, 14) }));
     worksheet['!cols'] = wscols;
 
-    XLSX.writeFile(workbook, "Controle_de_Compras.xlsx");
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const datePart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timePart = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+    const fullStamp = `${datePart}_${timePart}`;
+
+    XLSX.writeFile(workbook, `Controle_de_Compras_${fullStamp}.xlsx`);
   };
 
   const handleImportExcel = (e: React.ChangeEvent<HTMLInputElement>) => {

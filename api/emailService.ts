@@ -393,7 +393,13 @@ export async function sendDailyReport(force = false): Promise<{ success: boolean
 
     const htmlBody = buildReportHtml(launches, recipient, false);
     const excelBuffer = generateExcelBuffer(launches);
-    const dateStamp = new Date().toISOString().split("T")[0];
+    
+    // Generate timestamp with date and time in sequence
+    const now = new Date();
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    const datePart = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const timePart = `${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+    const fullStamp = `${datePart}_${timePart}`;
 
     await transporter.sendMail({
       from: `"ShopControl Relatórios" <${settings.smtpUser}>`,
@@ -402,7 +408,7 @@ export async function sendDailyReport(force = false): Promise<{ success: boolean
       html: htmlBody,
       attachments: [
         {
-          filename: `Planilha_Lancamentos_ShopControl_${dateStamp}.xlsx`,
+          filename: `Planilha_Lancamentos_ShopControl_${fullStamp}.xlsx`,
           content: excelBuffer
         }
       ]

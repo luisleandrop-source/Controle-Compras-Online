@@ -435,7 +435,14 @@ export default function App() {
     e.preventDefault();
     if (!newListFormName.trim()) return;
 
-    const budgetVal = parseFloat(newListFormBudget) || 0;
+    // Convert Brazilian currency string format to parsable float
+    let parsedBudget = newListFormBudget.trim();
+    if (parsedBudget.includes(".") && parsedBudget.includes(",")) {
+      parsedBudget = parsedBudget.replace(/\./g, "").replace(",", ".");
+    } else if (parsedBudget.includes(",")) {
+      parsedBudget = parsedBudget.replace(",", ".");
+    }
+    const budgetVal = parseFloat(parsedBudget) || 0;
     
     const dateStr = new Date().toLocaleString("pt-BR", {
       day: "numeric",
@@ -1103,12 +1110,16 @@ export default function App() {
                       <div className="relative">
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-mono font-semibold">R$</span>
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           required
-                          min="1"
-                          step="0.01"
                           value={newListFormBudget}
-                          onChange={(e) => setNewListFormBudget(e.target.value)}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            // Allow digits, dots, commas, and hyphens (only positive, so no hyphens needed)
+                            const cleaned = val.replace(/[^0-9.,]/g, "");
+                            setNewListFormBudget(cleaned);
+                          }}
                           placeholder="0,00"
                           className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-slate-900 font-mono font-semibold focus:outline-hidden focus:ring-2 focus:ring-brand-primary focus:border-transparent transition-all shadow-2xs"
                         />

@@ -56,7 +56,14 @@ export default function NewPurchase({
     e.preventDefault();
     if (!formName.trim() || !formDescricao.trim()) return;
 
-    const budgetVal = parseFloat(formBudget) || 0;
+    // Convert Brazilian currency string format to parsable float
+    let parsedBudget = formBudget.trim();
+    if (parsedBudget.includes(".") && parsedBudget.includes(",")) {
+      parsedBudget = parsedBudget.replace(/\./g, "").replace(",", ".");
+    } else if (parsedBudget.includes(",")) {
+      parsedBudget = parsedBudget.replace(",", ".");
+    }
+    const budgetVal = parseFloat(parsedBudget) || 0;
     
     const dateStr = new Date().toLocaleString("pt-BR", {
       day: "numeric",
@@ -258,13 +265,17 @@ export default function NewPurchase({
                     Valor Total (R$) <span className="text-rose-500">*</span>
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     required
                     id="input-valor"
-                    min="1"
-                    step="0.01"
                     value={formBudget}
-                    onChange={(e) => setFormBudget(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      // Allow digits, dots, commas, and hyphens (only positive, so no hyphens needed)
+                      const cleaned = val.replace(/[^0-9.,]/g, "");
+                      setFormBudget(cleaned);
+                    }}
                     placeholder="0,00"
                     className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono font-semibold focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
                   />
