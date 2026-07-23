@@ -85,12 +85,13 @@ export default function Lists({
   const [filterRequisitor, setFilterRequisitor] = useState("");
   const [filterStartDate, setFilterStartDate] = useState("");
   const [filterEndDate, setFilterEndDate] = useState("");
+  const [filterValue, setFilterValue] = useState("");
   const [pageSize, setPageSize] = useState<number>(10);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterCategory, filterFornecedor, filterCentroCusto, filterDestino, filterRequisitor, filterStartDate, filterEndDate, pageSize]);
+  }, [searchTerm, filterCategory, filterFornecedor, filterCentroCusto, filterDestino, filterRequisitor, filterStartDate, filterEndDate, filterValue, pageSize]);
 
   // Item additions inputs
   const [newItemName, setNewItemName] = useState("");
@@ -207,9 +208,55 @@ export default function Lists({
         }
       }
 
-      return matchesSearch && matchesCategory && matchesFornecedor && matchesCentroCusto && matchesDestino && matchesRequisitor && matchesPeriod;
+      // 8. Valor Filter (Pesquisa por Valor - ex: 150, 150,00, >500, <100, 100-500)
+      let matchesValue = true;
+      if (filterValue.trim()) {
+        const rawInput = filterValue.trim().toLowerCase().replace("r$", "").trim();
+        const spentVal = Number(list.spent) || 0;
+        const budgetVal = Number(list.budget) || 0;
+
+        if (rawInput.startsWith(">")) {
+          const target = parseFloat(rawInput.replace(">", "").trim().replace(".", "").replace(",", "."));
+          if (!isNaN(target)) {
+            matchesValue = spentVal >= target || budgetVal >= target;
+          }
+        } else if (rawInput.startsWith("<")) {
+          const target = parseFloat(rawInput.replace("<", "").trim().replace(".", "").replace(",", "."));
+          if (!isNaN(target)) {
+            matchesValue = spentVal <= target || budgetVal <= target;
+          }
+        } else if (rawInput.includes("-")) {
+          const parts = rawInput.split("-").map(p => parseFloat(p.trim().replace(".", "").replace(",", ".")));
+          if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
+            const min = Math.min(parts[0], parts[1]);
+            const max = Math.max(parts[0], parts[1]);
+            matchesValue = (spentVal >= min && spentVal <= max) || (budgetVal >= min && budgetVal <= max);
+          }
+        } else {
+          const numTarget = parseFloat(rawInput.replace(".", "").replace(",", "."));
+          const spentBrl = spentVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const budgetBrl = budgetVal.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          
+          const spentStr = spentVal.toString();
+          const budgetStr = budgetVal.toString();
+
+          const textMatch = spentBrl.toLowerCase().includes(rawInput) ||
+                            budgetBrl.toLowerCase().includes(rawInput) ||
+                            spentStr.includes(rawInput) ||
+                            budgetStr.includes(rawInput);
+
+          const numMatch = !isNaN(numTarget) && (
+            Math.abs(spentVal - numTarget) < 0.01 ||
+            Math.abs(budgetVal - numTarget) < 0.01
+          );
+
+          matchesValue = textMatch || numMatch;
+        }
+      }
+
+      return matchesSearch && matchesCategory && matchesFornecedor && matchesCentroCusto && matchesDestino && matchesRequisitor && matchesPeriod && matchesValue;
     });
-  }, [shoppingLists, searchTerm, filterCategory, filterFornecedor, filterCentroCusto, filterDestino, filterRequisitor, filterStartDate, filterEndDate]);
+  }, [shoppingLists, searchTerm, filterCategory, filterFornecedor, filterCentroCusto, filterDestino, filterRequisitor, filterStartDate, filterEndDate, filterValue]);
 
   const handleExportToExcel = () => {
     const formatExcelDate = (dateStr: string | undefined): string => {
@@ -830,7 +877,7 @@ export default function Lists({
             <div className="bg-slate-50/50 border border-slate-100 rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block">Filtros Avançados</span>
-                {(filterFornecedor || filterCentroCusto !== "All" || filterDestino || filterRequisitor || searchTerm || filterCategory !== "All" || filterStartDate || filterEndDate) && (
+                {(filterFornecedor || filterCentroCusto !== "All" || filterDestino || filterRequisitor || searchTerm || filterCategory !== "All" || filterStartDate || filterEndDate || filterValue) && (
                   <button
                     onClick={() => {
                       setFilterFornecedor("");
@@ -841,6 +888,7 @@ export default function Lists({
                       setFilterCategory("All");
                       setFilterStartDate("");
                       setFilterEndDate("");
+                      setFilterValue("");
                     }}
                     className="text-[11px] font-bold text-rose-500 hover:text-rose-700 flex items-center gap-1 transition-colors cursor-pointer"
                   >
@@ -850,7 +898,7 @@ export default function Lists({
                 )}
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {/* 1. Busca de Produtos */}
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
@@ -866,7 +914,22 @@ export default function Lists({
                   />
                 </div>
 
-                {/* 2. Fornecedor */}
+                {/* 2. Pesquisa por Valor */}
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block flex items-center gap-1">
+                    <DollarSign className="w-3 h-3 text-emerald-600" />
+                    Pesquisar por Valor (R$)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: 150,00 ou >500"
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                </div>
+
+                {/* 3. Fornecedor */}
                 <div>
                   <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Fornecedor</label>
                   <input
