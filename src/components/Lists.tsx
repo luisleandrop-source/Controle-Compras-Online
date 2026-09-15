@@ -5,7 +5,7 @@ import {
   Receipt, Utensils, CreditCard, ChevronLeft, PlusCircle, AlertTriangle,
   User, Building, Folder, Calendar, Truck, MapPin, Layers, Hash,
   Pencil, Eye, FileSpreadsheet, Download, Upload, LogOut, ChevronUp, ChevronDown,
-  DollarSign
+  DollarSign, Briefcase, FileText, Store, Clock
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { ShoppingList, ShoppingItem, CategoryType, AppCategory } from "../types";
@@ -98,6 +98,10 @@ export default function Lists({
   const [newItemPrice, setNewItemPrice] = useState("");
   const [newItemQty, setNewItemQty] = useState("");
 
+  // Detail View: Left Sidebar state (Lista de Lançamentos)
+  const [detailSearchTerm, setDetailSearchTerm] = useState("");
+  const [detailStatusFilter, setDetailStatusFilter] = useState<'ALL' | 'PENDENTE' | 'CONCLUÍDO'>('ALL');
+
   // Inline Spreadsheet Editing State
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDate, setEditDate] = useState("");
@@ -149,6 +153,22 @@ export default function Lists({
   };
 
   const activeList = shoppingLists.find(list => list.id === selectedListId) || null;
+
+  const detailSidebarLists = useMemo(() => {
+    return shoppingLists.filter(list => {
+      if (detailStatusFilter !== 'ALL' && list.status !== detailStatusFilter) return false;
+      if (detailSearchTerm.trim()) {
+        const term = detailSearchTerm.toLowerCase().trim();
+        const matchFornecedor = (list.fornecedor || list.name || "").toLowerCase().includes(term);
+        const matchDesc = (list.descricao || "").toLowerCase().includes(term);
+        const matchCat = (list.category || "").toLowerCase().includes(term);
+        const matchSol = (list.solicitante || "").toLowerCase().includes(term);
+        const matchCC = (list.centroCusto || "").toLowerCase().includes(term);
+        return matchFornecedor || matchDesc || matchCat || matchSol || matchCC;
+      }
+      return true;
+    });
+  }, [shoppingLists, detailSearchTerm, detailStatusFilter]);
 
   const uniqueCentros = useMemo(() => {
     const centros = new Set<string>();
@@ -1448,329 +1468,606 @@ export default function Lists({
 
         </div>
       ) : (
-        /* SHOPPING LIST DETAIL DRILL VIEW */
-        <div className="space-y-lg animate-in slide-in-from-right-10 duration-200">
+        /* SHOPPING LIST DETAIL SPLIT VIEW (Lista à Esquerda, Ficha à Direita) */
+        <div className="space-y-5 animate-in fade-in duration-300">
           
-          {/* Detailed list Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-md border-b border-surface-container pb-lg">
-            <div className="flex items-start gap-md">
+          {/* Top Bar: Navegação e Ações Rápidas */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="flex items-center gap-3">
               <button
                 onClick={() => onSelectList(null)}
-                className="p-2 border border-outline-variant rounded-xl hover:bg-surface-container-lowest transition-colors text-on-surface active:scale-95 duration-100"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-all cursor-pointer active:scale-95 shadow-2xs"
+                title="Voltar para a Planilha Completa"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
+                <span>Voltar para Planilha</span>
               </button>
-              <div>
-                <div className="flex items-center gap-xs">
-                  <h3 className="font-headline font-extrabold text-lg text-on-surface leading-tight">
-                    {activeList.name}
-                  </h3>
-                  <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase ${
-                    activeList.status === 'CONCLUÍDO'
-                      ? "bg-brand-secondary-container text-brand-on-secondary-container"
-                      : "bg-surface-container-high text-on-surface-variant"
-                  }`}>
-                    {activeList.status}
-                  </span>
-                </div>
-                
-                <p className="font-sans text-[11px] text-on-surface-variant mt-1 font-semibold flex items-center gap-xs">
-                  <span className={`inline-block w-2.5 h-2.5 rounded-full ${renderCategoryDotBg(activeList.category)}`}></span>
-                  {activeList.category} • Orçamento Estimado: R$ {activeList.budget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </p>
+              <div className="h-4 w-px bg-slate-200 hidden sm:block" />
+              <div className="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+                <span>Visualização:</span>
+                <span className="font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded-md">Lista à Esquerda & Ficha à Direita</span>
               </div>
             </div>
 
-            <div className="flex items-center gap-sm self-end md:self-auto">
+            <div className="flex items-center gap-2 self-end sm:self-auto">
               <button
                 onClick={() => toggleListStatus(activeList)}
-                className={`py-2 px-md rounded-xl text-xs font-bold flex items-center gap-xs cursor-pointer active:scale-95 duration-100 transition-colors ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer transition-all active:scale-95 shadow-2xs ${
                   activeList.status === 'CONCLUÍDO'
-                    ? "bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest"
-                    : "bg-brand-secondary text-brand-on-secondary-container hover:bg-brand-secondary/85"
+                    ? "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    : "bg-emerald-600 hover:bg-emerald-700 text-white"
                 }`}
               >
-                <Check className="w-4 h-4" />
-                <span>{activeList.status === 'CONCLUÍDO' ? "Reabrir Lista" : "Concluir Compra"}</span>
+                <Check className="w-3.5 h-3.5" />
+                <span>{activeList.status === 'CONCLUÍDO' ? "Reabrir Lançamento" : "Concluir Lançamento"}</span>
               </button>
 
               <button
                 onClick={() => {
-                  if (confirm("Tem certeza que deseja apagar essa lista permanentemente?")) {
+                  if (confirm(`Tem certeza que deseja apagar permanentemente o lançamento "${activeList.fornecedor || activeList.name}"?`)) {
                     onDeleteList(activeList.id);
+                    onSelectList(null);
                   }
                 }}
-                className="p-2.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl transition-colors active:scale-95"
-                title="Apagar Lista"
+                className="p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 rounded-xl transition-all cursor-pointer active:scale-95 shadow-2xs"
+                title="Apagar este lançamento"
               >
-                <Trash2 className="w-4.5 h-4.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+          {/* Grid Principal: Lista de Lançamentos à Esquerda (4 cols) e Ficha à Direita (8 cols) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             
-            {/* Left side column: Items list */}
-            <div className="lg:col-span-2 space-y-md">
-              <div className="flex items-center justify-between">
-                <h4 className="font-headline font-bold text-xs text-on-surface uppercase tracking-wider">
-                  Itens da Lista ({activeList.items.length})
-                </h4>
-                <span className="font-sans text-[11px] text-on-surface-variant font-medium">
-                  Adquiridos: {activeListCheckedItemsCount} de {activeList.items.length} ({
-                    activeList.items.length > 0 
-                      ? Math.round((activeListCheckedItemsCount / activeList.items.length) * 100) 
-                      : 0
-                  }%)
-                </span>
-              </div>
+            {/* ======================================================== */}
+            {/* COLUNA ESQUERDA: LISTA DE LANÇAMENTOS E ITENS (lg:col-span-5 xl:col-span-4) */}
+            {/* ======================================================== */}
+            <div className="lg:col-span-5 xl:col-span-4 space-y-5">
+              
+              {/* Painel: Lista de Lançamentos (Navegação Rápida) */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-indigo-600" />
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Lista de Lançamentos
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {detailSidebarLists.length} registro{detailSidebarLists.length !== 1 ? "s" : ""}
+                  </span>
+                </div>
 
-              {/* Items Card List */}
-              <div className="space-y-sm">
-                {activeList.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-center justify-between p-md rounded-2xl border transition-all ${
-                      item.checked
-                        ? "bg-surface-container-low/50 border-surface-container-high/80 opacity-70"
-                        : "bg-surface-container-lowest border-surface-container-low hover:border-outline-variant shadow-xs"
+                {/* Busca Rápida na Lista Lateral */}
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-2.5 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Filtrar fornecedor, setor..."
+                    value={detailSearchTerm}
+                    onChange={(e) => setDetailSearchTerm(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                  />
+                  {detailSearchTerm && (
+                    <button
+                      onClick={() => setDetailSearchTerm("")}
+                      className="absolute right-2 top-2 text-slate-400 hover:text-slate-600"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtros rápidos de Status */}
+                <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                  <button
+                    onClick={() => setDetailStatusFilter('ALL')}
+                    className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                      detailStatusFilter === 'ALL'
+                        ? "bg-indigo-600 text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    <div 
-                      onClick={() => handleToggleItem(activeList, item.id)}
-                      className="flex items-center gap-md cursor-pointer flex-1 select-none mr-2"
-                    >
-                      <button className="text-on-surface-variant focus:outline-hidden">
-                        {item.checked ? (
-                          <CheckSquare className="w-5 h-5 text-brand-on-secondary-container" />
-                        ) : (
-                          <Square className="w-5 h-5" />
-                        )}
-                      </button>
+                    Todos
+                  </button>
+                  <button
+                    onClick={() => setDetailStatusFilter('PENDENTE')}
+                    className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                      detailStatusFilter === 'PENDENTE'
+                        ? "bg-amber-600 text-white"
+                        : "bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    }`}
+                  >
+                    Pendentes
+                  </button>
+                  <button
+                    onClick={() => setDetailStatusFilter('CONCLUÍDO')}
+                    className={`px-2 py-1 rounded-md transition-colors cursor-pointer ${
+                      detailStatusFilter === 'CONCLUÍDO'
+                        ? "bg-emerald-600 text-white"
+                        : "bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                    }`}
+                  >
+                    Concluídos
+                  </button>
+                </div>
 
-                      <div className="max-w-xs truncate">
-                        <p className={`font-sans text-xs font-semibold leading-tight ${item.checked ? 'line-through text-on-surface-variant/70' : 'text-on-surface'}`}>
-                          {item.name}
-                        </p>
-                        <p className="font-sans text-[10px] text-on-surface-variant mt-0.5">
-                          Quant: <span className="font-bold">{item.quantity}u</span> • Unitário: R$ {item.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                        </p>
+                {/* Lista Scrollável de Lançamentos */}
+                <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                  {detailSidebarLists.map((list) => {
+                    const isSelected = list.id === activeList.id;
+                    const itemsSummary = list.items
+                      .map(it => it.name)
+                      .slice(0, 2)
+                      .join(", ");
+
+                    return (
+                      <div
+                        key={list.id}
+                        onClick={() => onSelectList(list)}
+                        className={`p-3 rounded-xl border transition-all cursor-pointer text-left ${
+                          isSelected
+                            ? "bg-indigo-50/70 border-indigo-400 ring-2 ring-indigo-200 shadow-xs"
+                            : "bg-slate-50/40 hover:bg-slate-100/70 border-slate-200/80 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-2 h-2 rounded-full shrink-0 ${renderCategoryDotBg(list.category)}`} />
+                              <h4 className={`text-xs font-bold truncate ${isSelected ? "text-indigo-950" : "text-slate-800"}`}>
+                                {list.fornecedor || list.name}
+                              </h4>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mt-0.5 truncate">
+                              {list.descricao || itemsSummary || "Sem descrição"}
+                            </p>
+                          </div>
+
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider shrink-0 ${
+                            list.status === 'CONCLUÍDO'
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-amber-100 text-amber-800"
+                          }`}>
+                            {list.status}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100 text-[10px] text-slate-500">
+                          <span className="font-mono">{formatDate(list.dataLancamento || list.date)}</span>
+                          <span className="font-mono font-bold text-slate-800">
+                            R$ {(list.spent || list.budget || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {detailSidebarLists.length === 0 && (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      Nenhum lançamento encontrado com este filtro.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Painel: Itens do Lançamento Selecionado */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                      Itens do Lançamento ({activeList.items.length})
+                    </h3>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">
+                    {activeListCheckedItemsCount} de {activeList.items.length} ({
+                      activeList.items.length > 0 
+                        ? Math.round((activeListCheckedItemsCount / activeList.items.length) * 100) 
+                        : 0
+                    }%)
+                  </span>
+                </div>
+
+                {/* Lista de Itens com Checkbox */}
+                <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                  {activeList.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                        item.checked
+                          ? "bg-slate-50/70 border-slate-200 text-slate-500 opacity-80"
+                          : "bg-white border-slate-200 hover:border-slate-300 shadow-2xs"
+                      }`}
+                    >
+                      <div
+                        onClick={() => handleToggleItem(activeList, item.id)}
+                        className="flex items-center gap-2.5 cursor-pointer flex-1 select-none min-w-0 mr-2"
+                      >
+                        <button className="text-slate-400 hover:text-indigo-600 transition-colors focus:outline-hidden">
+                          {item.checked ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-semibold leading-tight truncate ${item.checked ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                            {item.name}
+                          </p>
+                          <p className="text-[10px] text-slate-500 mt-0.5">
+                            Qtd: <span className="font-bold text-slate-700">{item.quantity}u</span> • Un: R$ {item.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="font-mono text-xs font-bold text-slate-800">
+                          R$ {(item.price * item.quantity).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </span>
+                        
+                        <button
+                          onClick={() => handleDeleteItem(activeList, item.id)}
+                          className="p-1 text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                          title="Remover item"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
+                  ))}
 
-                    <div className="flex items-center gap-md">
-                      <span className="font-mono text-xs font-bold text-on-surface">
-                        R$ {(item.price * item.quantity).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  {activeList.items.length === 0 && (
+                    <div className="py-6 px-4 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                      <Sparkles className="w-6 h-6 text-slate-300 mx-auto mb-2" />
+                      <p className="text-xs font-bold text-slate-700">Nenhum item adicionado</p>
+                      <p className="text-[11px] text-slate-500 mt-1">
+                        Utilize o formulário da Ficha à direita para incluir produtos.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+
+            {/* ======================================================== */}
+            {/* COLUNA DIREITA: FICHA DE LANÇAMENTO (lg:col-span-7 xl:col-span-8) */}
+            {/* ======================================================== */}
+            <div className="lg:col-span-7 xl:col-span-8 space-y-5">
+              
+              {/* Card 1: Cabeçalho Principal da Ficha */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border border-indigo-200/60 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        Ficha Cadastral
                       </span>
-                      
-                      <button
-                        onClick={() => handleDeleteItem(activeList, item.id)}
-                        className="p-1 text-on-surface-variant hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Apagar item"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        activeList.status === 'CONCLUÍDO'
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                          : "bg-amber-50 text-amber-700 border border-amber-200"
+                      }`}>
+                        {activeList.status}
+                      </span>
+                    </div>
+
+                    <h2 className="text-2xl font-bold text-slate-900 tracking-tight font-serif" style={{ fontFamily: "Playfair Display, Georgia, serif" }}>
+                      {activeList.fornecedor || activeList.name}
+                    </h2>
+                  </div>
+
+                  <div className="flex flex-col sm:items-end">
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Orçamento Estimado</span>
+                    <span className="text-xl font-mono font-bold text-indigo-600">
+                      R$ {activeList.budget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 flex flex-wrap items-center gap-3 text-xs text-slate-600">
+                  <div className="flex items-center gap-1.5 font-medium">
+                    <span className={`w-2.5 h-2.5 rounded-full ${renderCategoryDotBg(activeList.category)}`} />
+                    <span className="font-semibold text-slate-800">{activeList.category}</span>
+                  </div>
+                  <span className="text-slate-300">•</span>
+                  <div className="flex items-center gap-1 text-slate-500">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Lançamento: <strong className="text-slate-700 font-mono">{formatDate(activeList.dataLancamento) || activeList.date}</strong></span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Card 2: Dados Corporativos e Fiscais da Ficha */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-5">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">
+                        Ficha de Lançamento
+                      </h3>
+                      <p className="text-[11px] text-slate-500">
+                        Metadados e informações contábeis corporativas
+                      </p>
                     </div>
                   </div>
-                ))}
+                  <span className="text-[10px] font-mono text-slate-400 bg-slate-50 border border-slate-100 px-2 py-1 rounded-md">
+                    ID: {activeList.id.substring(0, 8)}
+                  </span>
+                </div>
 
-                {activeList.items.length === 0 && (
-                  <div className="p-xl text-center border-2 border-dashed border-outline-variant rounded-2xl bg-surface-container-low">
-                    <Sparkles className="w-8 h-8 text-on-surface-variant/40 mx-auto mb-sm animate-bounce" />
-                    <h5 className="font-headline font-bold text-xs text-on-surface">Esta lista está vazia</h5>
-                    <p className="font-sans text-xs text-on-surface-variant mt-1.5">
-                      Utilize o formulário ao lado para cadastrar os produtos que você precisa comprar.
+                {/* Grid de Campos Detalhados */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {/* 1. Fornecedor */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Store className="w-3 h-3 text-slate-400" />
+                      Fornecedor
+                    </span>
+                    <p className="text-xs font-bold text-slate-800 break-words">
+                      {activeList.fornecedor || activeList.name}
                     </p>
+                  </div>
+
+                  {/* 2. Data Recibo */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Receipt className="w-3 h-3 text-slate-400" />
+                      Data Recibo
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800 font-mono">
+                      {activeList.date || "-"}
+                    </p>
+                  </div>
+
+                  {/* 3. Data Lançamento */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-400" />
+                      Data Lançamento
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800 font-mono">
+                      {formatDate(activeList.dataLancamento) || activeList.date}
+                    </p>
+                  </div>
+
+                  {/* 4. Solicitante */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <User className="w-3 h-3 text-slate-400" />
+                      Solicitante
+                    </span>
+                    <p className="text-xs font-bold text-slate-800">
+                      {activeList.solicitante || "Alex"}
+                    </p>
+                  </div>
+
+                  {/* 5. Setor */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Briefcase className="w-3 h-3 text-slate-400" />
+                      Setor
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800">
+                      {activeList.setor || "Tecnologia"}
+                    </p>
+                  </div>
+
+                  {/* 6. Centro de Custo */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Folder className="w-3 h-3 text-slate-400" />
+                      Centro de Custo
+                    </span>
+                    <p className="text-xs font-bold text-slate-800 font-mono">
+                      {activeList.centroCusto || "CC-TI-42"}
+                    </p>
+                  </div>
+
+                  {/* 7. Modalidade / Final Cartão */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <CreditCard className="w-3 h-3 text-slate-400" />
+                      Modalidade / Cartão
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800">
+                      {activeList.finalCartao ? `💳 Final ${activeList.finalCartao}` : "Boleto / Pix"}
+                    </p>
+                  </div>
+
+                  {/* 8. Parcelas */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-slate-400" />
+                      Parcelas
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800">
+                      {activeList.parcelas && activeList.parcelas > 1 ? `${activeList.parcelas}x no cartão` : "À vista (1x)"}
+                    </p>
+                  </div>
+
+                  {/* 9. Previsão de Entrega */}
+                  <div className="p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <Truck className="w-3 h-3 text-slate-400" />
+                      Entrega
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800 font-mono">
+                      {formatDate(activeList.entrega)}
+                    </p>
+                  </div>
+
+                  {/* 10. Destino Final */}
+                  <div className="col-span-1 sm:col-span-2 md:col-span-3 p-3 bg-slate-50/70 border border-slate-100 rounded-xl space-y-1">
+                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-slate-400" />
+                      Destino Final
+                    </span>
+                    <p className="text-xs font-semibold text-slate-800">
+                      {activeList.destino || "Almoxarifado Central"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Descrição do(s) Produto(s) */}
+                {activeList.descricao && (
+                  <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                    <span className="text-[10px] uppercase tracking-wider text-slate-500 font-bold block">
+                      Descrição do(s) Produto(s)
+                    </span>
+                    <div className="bg-emerald-50/80 text-emerald-950 p-3 rounded-xl border border-emerald-200/60 flex items-start gap-2.5 leading-relaxed text-xs">
+                      <Sparkles className="w-4 h-4 mt-0.5 text-emerald-600 shrink-0" />
+                      <span className="font-medium">{activeList.descricao}</span>
+                    </div>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Right side column: Information, Budget summary and Add item panel */}
-            <div className="space-y-lg">
-              
-              {/* Corporate Metadata Card */}
-              <div className="bg-white p-lg rounded-2xl border border-slate-200 shadow-xs space-y-md font-sans text-xs">
-                <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <Building className="w-5 h-5 text-brand-primary" />
-                  <h4 className="font-headline font-bold text-xs text-slate-900 uppercase tracking-wider">
-                    Ficha de Lançamento
-                  </h4>
+              {/* Card 3: Resumo Financeiro & Orçamento */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Resumo Financeiro & Orçamento
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Acompanhamento de orçamentos e valores realizados
+                    </p>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-y-3 gap-x-2 text-slate-600">
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Fornecedor</span>
-                    <span className="font-semibold text-slate-800 break-words block">{activeList.fornecedor || activeList.name}</span>
-                  </div>
-                  
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Data Recibo</span>
-                    <span className="font-semibold text-slate-800 block">{activeList.date}</span>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Solicitante</span>
-                    <div className="flex items-center gap-1">
-                      <User className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold text-slate-800 block">{activeList.solicitante || "Alex"}</span>
-                    </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Orçamento Estipulado
+                    </span>
+                    <p className="text-base font-mono font-bold text-slate-800 mt-1">
+                      R$ {activeList.budget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
 
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Setor</span>
-                    <span className="font-semibold text-slate-800 block">{activeList.setor || "Tecnologia"}</span>
+                  <div className="p-3.5 bg-slate-50 border border-slate-100 rounded-xl">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      Soma dos Itens
+                    </span>
+                    <p className="text-base font-mono font-bold text-slate-800 mt-1">
+                      R$ {activeListTotalItemsVal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
 
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Centro de Custo</span>
-                    <div className="flex items-center gap-1">
-                      <Folder className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold text-slate-800 block font-mono">{activeList.centroCusto || "CC-TI-42"}</span>
-                    </div>
+                  <div className="p-3.5 bg-emerald-50/70 border border-emerald-100 rounded-xl">
+                    <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
+                      Total Realizado (Adquirido)
+                    </span>
+                    <p className="text-base font-mono font-bold text-emerald-800 mt-1">
+                      R$ {activeList.spent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                    </p>
                   </div>
+                </div>
 
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Modalidade</span>
-                    <div className="flex items-center gap-1">
-                      <CreditCard className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold text-slate-800 block">💳 ...{activeList.finalCartao || "9876"}</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Parcelas</span>
-                    <span className="font-semibold text-slate-800 block font-medium">
-                      {activeList.parcelas && activeList.parcelas > 1 ? `${activeList.parcelas}x no cartão` : "À vista (1x)"}
+                {/* Barra de Progresso do Orçamento */}
+                <div className="space-y-1.5 pt-2">
+                  <div className="flex justify-between text-[11px] text-slate-500 font-semibold">
+                    <span>Execução Financeira</span>
+                    <span className="font-mono font-bold text-slate-700">
+                      {activeList.budget > 0 ? Math.round((activeListTotalItemsVal / activeList.budget) * 100) : 0}% do teto
                     </span>
                   </div>
-
-                  <div className="space-y-0.5">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Entrega</span>
-                    <div className="flex items-center gap-1">
-                      <Truck className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold text-slate-800 block">{formatDate(activeList.entrega)}</span>
-                    </div>
+                  <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                    <div 
+                      style={{ width: `${Math.min(activeList.budget > 0 ? (activeListTotalItemsVal / activeList.budget) * 100 : 0, 100)}%` }}
+                      className={`h-full transition-all duration-300 ${
+                        activeListTotalItemsVal > activeList.budget ? "bg-rose-500" : "bg-emerald-500"
+                      }`}
+                    />
                   </div>
-
-                  {activeList.dataLancamento && (
-                    <div className="space-y-0.5">
-                      <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Data Lançamento</span>
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span className="font-semibold text-slate-800 block">{formatDate(activeList.dataLancamento)}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="col-span-2 space-y-0.5 border-t border-slate-100 pt-2 mt-1">
-                    <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block font-bold">Destino Final</span>
-                    <div className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                      <span className="font-semibold text-slate-800 block">{activeList.destino || "Almoxarifado Central"}</span>
-                    </div>
-                  </div>
-
-                  {activeList.descricao && (
-                    <div className="col-span-2 space-y-1 border-t border-slate-100 pt-2 mt-1">
-                      <span className="text-[9px] uppercase tracking-wider text-slate-400 font-bold block">Descrição do(s) Produto(s)</span>
-                      <div className="bg-emerald-50/70 text-emerald-900 p-2.5 rounded-lg border border-emerald-100/60 flex items-start gap-1.5 leading-relaxed font-semibold text-[10.5px]">
-                        <Sparkles className="w-3.5 h-3.5 mt-0.5 text-emerald-600 shrink-0" />
-                        <span>{activeList.descricao}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Dynamic Budget feedback */}
-              <div className="bg-surface-container-lowest p-lg rounded-2xl border border-surface-container shadow-xs space-y-md font-sans text-xs">
-                <h4 className="font-headline font-bold text-xs text-on-surface uppercase tracking-wider">
-                  Resumo de Valores
-                </h4>
-
-                <div className="space-y-sm text-on-surface-variant">
-                  <div className="flex justify-between">
-                    <span>Orçamento Estipulado:</span>
-                    <span className="font-mono font-bold text-on-surface">R$ {activeList.budget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Soma de Todos os Itens:</span>
-                    <span className="font-mono font-bold text-on-surface">R$ {activeListTotalItemsVal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Total Realizado (Adquirido):</span>
-                    <span className="font-mono font-extrabold text-brand-on-secondary-container">R$ {activeList.spent.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span>
-                  </div>
-                </div>
-
-                {/* Progress bar inside detail card */}
-                <div className="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mt-md">
-                  <div 
-                    style={{ width: `${activeList.budget > 0 ? (activeListTotalItemsVal / activeList.budget) * 100 : 0}%` }}
-                    className={`h-full ${activeListTotalItemsVal > activeList.budget ? "bg-red-500" : "bg-brand-secondary"}`}
-                  ></div>
                 </div>
 
                 {activeListTotalItemsVal > activeList.budget && (
-                  <div className="p-sm rounded-xl bg-red-50 border border-red-100 text-red-900 text-[11px] flex gap-sm leading-relaxed">
-                    <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
-                    <span>Atenção! A soma estimada dos itens ultrapassou o orçamento estipulado em R$ {(activeListTotalItemsVal - activeList.budget).toFixed(2)}. Considere rever quantidades.</span>
+                  <div className="p-3 rounded-xl bg-rose-50 border border-rose-100 text-rose-800 text-xs flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                    <span>Atenção: A soma estimada dos itens ultrapassou o orçamento previsto em <strong>R$ {(activeListTotalItemsVal - activeList.budget).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</strong>.</span>
                   </div>
                 )}
               </div>
 
-              {/* Add item to list form */}
-              <div className="bg-surface-container-lowest p-lg rounded-2xl border border-surface-container shadow-xs space-y-md">
-                <h4 className="font-headline font-bold text-xs text-on-surface uppercase tracking-wider">
-                  Adicionar Item
-                </h4>
-
-                <form onSubmit={handleAddItem} className="space-y-sm font-sans text-xs">
-                  <div>
-                    <label className="block text-on-surface-variant font-semibold mb-1">Nome do Produto</label>
-                    <input
-                      type="text"
-                      required
-                      value={newItemName}
-                      onChange={(e) => setNewItemName(e.target.value)}
-                      placeholder="Ex: Arroz Tipo 1, Tomate..."
-                      className="w-full bg-surface-container border-none rounded-xl px-sm py-2.5 text-on-surface focus:ring-1 focus:ring-brand-secondary"
-                    />
+              {/* Card 4: Adicionar Item ao Lançamento */}
+              <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <PlusCircle className="w-4 h-4" />
                   </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      Adicionar Item à Ficha
+                    </h3>
+                    <p className="text-[11px] text-slate-500">
+                      Inclua produtos ou serviços pertencentes a este lançamento
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="grid grid-cols-2 gap-sm">
-                    <div>
-                      <label className="block text-on-surface-variant font-semibold mb-1">Preço Un. (R$)</label>
+                <form onSubmit={handleAddItem} className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-6">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Nome do Produto / Descrição
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={newItemName}
+                        onChange={(e) => setNewItemName(e.target.value)}
+                        placeholder="Ex: Cesto de fritura 30 cm, Resma Papel A4..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Preço Unitário (R$)
+                      </label>
                       <input
                         type="number"
                         step="0.01"
                         min="0"
                         value={newItemPrice}
                         onChange={(e) => setNewItemPrice(e.target.value)}
-                        placeholder="Ex: 5.99"
-                        className="w-full bg-surface-container border-none rounded-xl px-sm py-2.5 text-on-surface focus:ring-1 focus:ring-brand-secondary"
+                        placeholder="0,00"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors font-mono"
                       />
                     </div>
-                    <div>
-                      <label className="block text-on-surface-variant font-semibold mb-1">Quantidade</label>
+
+                    <div className="sm:col-span-3">
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        Quantidade
+                      </label>
                       <input
                         type="number"
                         min="1"
                         value={newItemQty}
                         onChange={(e) => setNewItemQty(e.target.value)}
-                        placeholder="Ex: 2"
-                        className="w-full bg-surface-container border-none rounded-xl px-sm py-2.5 text-on-surface focus:ring-1 focus:ring-brand-secondary"
+                        placeholder="1"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-indigo-500 transition-colors font-mono"
                       />
                     </div>
                   </div>
 
                   <button
                     type="submit"
-                    className="w-full mt-md py-2 px-md bg-brand-primary hover:bg-black/85 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-xs cursor-pointer transition-colors"
+                    className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 cursor-pointer transition-all shadow-xs active:scale-98"
                   >
                     <PlusCircle className="w-4 h-4" />
-                    <span>Adicionar Item</span>
+                    <span>Adicionar Item ao Lançamento</span>
                   </button>
                 </form>
               </div>
