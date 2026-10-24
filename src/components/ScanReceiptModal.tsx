@@ -197,7 +197,8 @@ export default function ScanReceiptModal({
       name: it.name,
       price: it.price,
       quantity: it.quantity,
-      checked: true
+      checked: true,
+      category: parsedResult.category
     }));
 
     const dateFormatted = new Date()

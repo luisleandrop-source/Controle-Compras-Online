@@ -504,7 +504,8 @@ export default function App() {
               name: newListFormDescricao.trim(),
               price: budgetVal,
               quantity: 1,
-              checked: false
+              checked: false,
+              category: finalCategory
             }
           ]
         : [],
