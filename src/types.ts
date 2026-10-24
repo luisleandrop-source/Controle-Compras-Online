@@ -1,3 +1,5 @@
+export const APP_VERSION = "2.3.0";
+
 export interface ShoppingItem {
   id: string;
   name: string;

@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { 
-  PlusCircle, Sparkles, Building, Folder, DollarSign, Calendar, 
-  CreditCard, User, Truck, MapPin, Check, Plus, ArrowRight, Eye
+import {
+  Building,
+  Folder,
+  DollarSign,
+  Calendar,
+  CreditCard,
+  User,
+  Truck,
+  MapPin,
+  CheckCircle2,
+  Plus,
+  ArrowRight,
+  FileSpreadsheet
 } from "lucide-react";
 import { ShoppingList, AppCategory } from "../types";
 
@@ -24,28 +34,31 @@ export default function NewPurchase({
   const [formCategory, setFormCategory] = useState("");
   const [formDataLancamento, setFormDataLancamento] = useState(() => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   const [formFinalCartao, setFormFinalCartao] = useState("9876");
   const [formParcelas, setFormParcelas] = useState("1");
-  const [formSolicitante, setFormSolicitante] = useState(userProfileName || "User");
+  const [formSolicitante, setFormSolicitante] = useState(
+    userProfileName || "User"
+  );
   const [formSetor, setFormSetor] = useState("Tecnologia");
   const [formCentroCusto, setFormCentroCusto] = useState("CC-TI-42");
   const [formEntrega, setFormEntrega] = useState(() => {
     const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
   });
   const [formDestino, setFormDestino] = useState("Almoxarifado Central");
-  const [successFeedback, setSuccessFeedback] = useState<{ name: string; budget: number } | null>(null);
+  const [successFeedback, setSuccessFeedback] = useState<{
+    name: string;
+    budget: number;
+  } | null>(null);
 
-  // Set default category if not set
   useEffect(() => {
     if (!formCategory && categories && categories.length > 0) {
       setFormCategory(`${categories[0].description} - ${categories[0].code}`);
     }
   }, [categories, formCategory]);
 
-  // Update default solicitante with user profile name
   useEffect(() => {
     if (userProfileName) {
       setFormSolicitante(userProfileName);
@@ -56,7 +69,6 @@ export default function NewPurchase({
     e.preventDefault();
     if (!formName.trim() || !formDescricao.trim()) return;
 
-    // Convert Brazilian currency string format to parsable float
     let parsedBudget = formBudget.trim();
     if (parsedBudget.includes(".") && parsedBudget.includes(",")) {
       parsedBudget = parsedBudget.replace(/\./g, "").replace(",", ".");
@@ -64,15 +76,21 @@ export default function NewPurchase({
       parsedBudget = parsedBudget.replace(",", ".");
     }
     const budgetVal = parseFloat(parsedBudget) || 0;
-    
-    const dateStr = new Date().toLocaleString("pt-BR", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit"
-    }).replace(".", "");
 
-    const finalCategory = formCategory || (categories[0] ? `${categories[0].description} - ${categories[0].code}` : "");
+    const dateStr = new Date()
+      .toLocaleString("pt-BR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+      .replace(".", "");
+
+    const finalCategory =
+      formCategory ||
+      (categories[0]
+        ? `${categories[0].description} - ${categories[0].code}`
+        : "");
 
     const newShoppingList: ShoppingList = {
       id: `list-${Date.now()}`,
@@ -82,17 +100,17 @@ export default function NewPurchase({
       date: dateStr,
       category: finalCategory,
       status: "PENDENTE",
-      items: formDescricao.trim() ? [
-        {
-          id: `item-${Date.now()}`,
-          name: formDescricao.trim(),
-          price: budgetVal,
-          quantity: 1,
-          checked: false
-        }
-      ] : [],
-      
-      // Corporate tracking parameters
+      items: formDescricao.trim()
+        ? [
+            {
+              id: `item-${Date.now()}`,
+              name: formDescricao.trim(),
+              price: budgetVal,
+              quantity: 1,
+              checked: false
+            }
+          ]
+        : [],
       fornecedor: formName.trim(),
       parcelas: parseInt(formParcelas) || 1,
       solicitante: formSolicitante.trim(),
@@ -106,11 +124,8 @@ export default function NewPurchase({
     };
 
     onCreateList(newShoppingList);
-
-    // Show success feedback
     setSuccessFeedback({ name: newShoppingList.name, budget: budgetVal });
-    
-    // Clear ALL fields for next entry
+
     setFormDescricao("");
     setFormName("");
     setFormBudget("");
@@ -120,79 +135,97 @@ export default function NewPurchase({
       setFormCategory("");
     }
     const d = new Date();
-    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
     setFormDataLancamento(todayStr);
-    setFormFinalCartao("");
     setFormParcelas("1");
-    setFormSolicitante(userProfileName || "");
-    setFormSetor("");
-    setFormCentroCusto("");
     setFormEntrega(todayStr);
-    setFormDestino("");
 
-    // Scroll to top
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   return (
-    <div className="space-y-6" id="new-purchase-container">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5" id="new-purchase-header">
+    <div className="max-w-4xl mx-auto space-y-6" id="new-purchase-container">
+      <div
+        className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
+        id="new-purchase-header"
+      >
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2" id="new-purchase-title">
-            <PlusCircle className="w-7 h-7 text-emerald-600" id="new-purchase-icon" />
-            Nova Compra
+          <h1
+            className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight"
+            id="new-purchase-title"
+          >
+            Nova Compra Corporativa
           </h1>
-          <p className="text-sm text-slate-500" id="new-purchase-subtitle">Cadastre uma nova compra corporativa detalhada preenchendo o formulário abaixo.</p>
+          <p className="text-sm text-slate-500 mt-1" id="new-purchase-subtitle">
+            Preencha os dados financeiros, contábeis e logísticos para abrir uma
+            nova ordem de compra.
+          </p>
         </div>
         <button
           onClick={onNavigateToLists}
           id="btn-view-launches"
-          className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold rounded-lg text-xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
         >
-          <Eye className="w-4 h-4" />
+          <FileSpreadsheet className="w-4 h-4 text-slate-500" />
           <span>Ver Lançamentos</span>
         </button>
       </div>
 
       {successFeedback && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300 shadow-2xs" id="success-feedback">
-          <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0 shadow-2xs">
-              <Check className="w-5 h-5" />
-            </div>
+        <div
+          className="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          id="success-feedback"
+        >
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-sm">Compra registrada com sucesso!</p>
-              <p className="text-xs text-emerald-700 font-medium mt-1">
-                A compra de <span className="font-bold">"{successFeedback.name}"</span> no valor de R$ <span className="font-bold">{successFeedback.budget.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</span> foi adicionada ao banco de dados com sucesso.
+              <p className="font-semibold text-sm">
+                Compra registrada com sucesso
+              </p>
+              <p className="text-xs text-emerald-800 mt-0.5">
+                {successFeedback.name} ·{" "}
+                <span className="font-mono tabular-nums font-semibold">
+                  R${" "}
+                  {successFeedback.budget.toLocaleString("pt-BR", {
+                    minimumFractionDigits: 2
+                  })}
+                </span>
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => setSuccessFeedback(null)}
               id="btn-insert-another"
-              className="px-4 py-2 bg-emerald-100 hover:bg-emerald-200/80 text-emerald-800 font-bold text-xs rounded-lg cursor-pointer transition-colors"
+              className="px-3.5 py-2 bg-white border border-emerald-200 hover:bg-emerald-100/50 text-emerald-800 font-semibold text-xs rounded-lg cursor-pointer transition-colors whitespace-nowrap"
             >
-              Inserir Outra
+              Novo Registro
             </button>
             <button
               onClick={onNavigateToLists}
               id="btn-see-in-lists"
-              className="flex items-center gap-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg cursor-pointer transition-colors shadow-2xs"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg cursor-pointer transition-colors whitespace-nowrap"
             >
-              <span>Ver na Listagem</span>
+              <span>Ver na Planilha</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleCreatePurchaseSubmit} className="space-y-6" id="new-purchase-form">
-        {/* Descrição do Produto */}
-        <div className="bg-emerald-50/20 p-5 rounded-2xl border border-emerald-100/60 space-y-2 shadow-2xs" id="field-group-desc">
-          <label className="flex items-center gap-1.5 text-slate-800 font-bold text-xs uppercase tracking-wider">
-            <Sparkles className="w-4 h-4 text-emerald-600" />
-            Descrição do Produto / Itens Comprados <span className="text-rose-500">*</span>
+      <form
+        onSubmit={handleCreatePurchaseSubmit}
+        className="bg-white border border-slate-200/80 rounded-2xl p-6 md:p-8 space-y-8"
+        id="new-purchase-form"
+      >
+        {/* Primary Item Description */}
+        <div id="field-group-desc">
+          <label
+            htmlFor="input-product-desc"
+            className="block text-slate-900 font-semibold text-xs mb-1.5"
+          >
+            Descrição do Produto ou Serviço{" "}
+            <span className="text-rose-600">*</span>
           </label>
           <input
             type="text"
@@ -200,69 +233,85 @@ export default function NewPurchase({
             id="input-product-desc"
             value={formDescricao}
             onChange={(e) => setFormDescricao(e.target.value)}
-            placeholder="Ex: Notebook Dell Inspiron 15, Kit 5 Cadeiras de Escritório Ergonômicas, etc."
-            className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-bold text-sm placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all shadow-2xs"
+            placeholder="Ex: Notebook Dell Inspiron 15, Kit 5 Cadeiras Ergonômicas"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-slate-900 font-medium text-sm placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
           />
+          <p className="text-xs text-slate-500 mt-1.5">
+            Este item será vinculado automaticamente à ficha do lançamento, onde
+            você poderá incluir itens adicionais.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6" id="form-grid-columns">
-          {/* Coluna 1: Dados Financeiros */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 space-y-5 shadow-2xs" id="card-financial-info">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-6 border-t border-slate-100"
+          id="form-grid-columns"
+        >
+          {/* Financial & Accounting Column */}
+          <div className="space-y-4" id="card-financial-info">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <CreditCard className="w-4 h-4 text-indigo-600" />
+              <h2 className="font-headline font-semibold text-sm text-slate-900">
                 Dados Financeiros e Faturamento
-              </h4>
+              </h2>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                  <Building className="w-4 h-4 text-slate-400" />
-                  Fornecedor / Estabelecimento <span className="text-rose-500">*</span>
+                <label
+                  htmlFor="input-fornecedor"
+                  className="flex items-center gap-1.5 text-slate-700 font-medium mb-1.5 text-xs"
+                >
+                  <Building className="w-3.5 h-3.5 text-slate-400" />
+                  Fornecedor / Estabelecimento{" "}
+                  <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   id="input-fornecedor"
-                  maxLength={35}
+                  maxLength={60}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  placeholder="Ex: Leroy Merlin, Dell Computadores, etc."
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  placeholder="Ex: Leroy Merlin, Dell Computadores"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-medium placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                  <Folder className="w-4 h-4 text-slate-400" />
-                  Classificação de Conta (Categoria) <span className="text-rose-500">*</span>
+                <label
+                  htmlFor="select-category"
+                  className="flex items-center gap-1.5 text-slate-700 font-medium mb-1.5 text-xs"
+                >
+                  <Folder className="w-3.5 h-3.5 text-slate-400" />
+                  Classificação Contábil{" "}
+                  <span className="text-rose-600">*</span>
                 </label>
                 <select
                   required
                   id="select-category"
                   value={formCategory}
                   onChange={(e) => setFormCategory(e.target.value)}
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all cursor-pointer"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors cursor-pointer"
                 >
                   {categories.map((cat) => {
                     const val = `${cat.description} - ${cat.code}`;
                     return (
                       <option key={cat.id} value={val}>
-                        {cat.description} - {cat.code}
+                        {cat.code} · {cat.description}
                       </option>
                     );
                   })}
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                    <DollarSign className="w-4 h-4 text-slate-400" />
-                    Valor Total (R$) <span className="text-rose-500">*</span>
+                  <label
+                    htmlFor="input-valor"
+                    className="flex items-center gap-1 text-slate-700 font-medium mb-1.5 text-xs"
+                  >
+                    <DollarSign className="w-3.5 h-3.5 text-slate-400" />
+                    Valor Total (R$) <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -271,20 +320,21 @@ export default function NewPurchase({
                     id="input-valor"
                     value={formBudget}
                     onChange={(e) => {
-                      const val = e.target.value;
-                      // Allow digits, dots, commas, and hyphens (only positive, so no hyphens needed)
-                      const cleaned = val.replace(/[^0-9.,]/g, "");
+                      const cleaned = e.target.value.replace(/[^0-9.,]/g, "");
                       setFormBudget(cleaned);
                     }}
                     placeholder="0,00"
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono font-semibold focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono tabular-nums font-semibold placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    Data Lançamento <span className="text-rose-500">*</span>
+                  <label
+                    htmlFor="input-data-lancamento"
+                    className="flex items-center gap-1 text-slate-700 font-medium mb-1.5 text-xs"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    Data Lançamento <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
@@ -292,14 +342,17 @@ export default function NewPurchase({
                     id="input-data-lancamento"
                     value={formDataLancamento}
                     onChange={(e) => setFormDataLancamento(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors cursor-pointer"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1.5 text-xs">
+                  <label
+                    htmlFor="input-final-cartao"
+                    className="block text-slate-700 font-medium mb-1.5 text-xs"
+                  >
                     Final do Cartão
                   </label>
                   <input
@@ -308,21 +361,26 @@ export default function NewPurchase({
                     id="input-final-cartao"
                     maxLength={4}
                     value={formFinalCartao}
-                    onChange={(e) => setFormFinalCartao(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Ex: 9876"
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    onChange={(e) =>
+                      setFormFinalCartao(e.target.value.replace(/\D/g, ""))
+                    }
+                    placeholder="9876"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1.5 text-xs">
+                  <label
+                    htmlFor="select-parcelas"
+                    className="block text-slate-700 font-medium mb-1.5 text-xs"
+                  >
                     Parcelas
                   </label>
                   <select
                     id="select-parcelas"
                     value={formParcelas}
                     onChange={(e) => setFormParcelas(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors cursor-pointer"
                   >
                     <option value="1">À vista (1x)</option>
                     <option value="2">2x no cartão</option>
@@ -338,23 +396,24 @@ export default function NewPurchase({
             </div>
           </div>
 
-          {/* Coluna 2: Dados Logísticos */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200/80 space-y-5 shadow-2xs" id="card-logistic-info">
-            <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-                <Truck className="w-4 h-4" />
-              </div>
-              <h4 className="font-bold text-xs uppercase tracking-wider text-slate-900">
-                Identificação &amp; Logística
-              </h4>
+          {/* Logistics & Requester Column */}
+          <div className="space-y-4" id="card-logistic-info">
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-100">
+              <Truck className="w-4 h-4 text-indigo-600" />
+              <h2 className="font-headline font-semibold text-sm text-slate-900">
+                Alocação e Logística de Entrega
+              </h2>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                    <User className="w-4 h-4 text-slate-400" />
-                    Solicitante <span className="text-rose-500">*</span>
+                  <label
+                    htmlFor="input-solicitante"
+                    className="flex items-center gap-1 text-slate-700 font-medium mb-1.5 text-xs"
+                  >
+                    <User className="w-3.5 h-3.5 text-slate-400" />
+                    Solicitante <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -362,14 +421,17 @@ export default function NewPurchase({
                     id="input-solicitante"
                     value={formSolicitante}
                     onChange={(e) => setFormSolicitante(e.target.value)}
-                    placeholder="Ex: User"
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    placeholder="Responsável"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 font-bold mb-1.5 text-xs">
-                    Setor <span className="text-rose-500">*</span>
+                  <label
+                    htmlFor="input-setor"
+                    className="block text-slate-700 font-medium mb-1.5 text-xs"
+                  >
+                    Setor <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -378,15 +440,18 @@ export default function NewPurchase({
                     value={formSetor}
                     onChange={(e) => setFormSetor(e.target.value)}
                     placeholder="Ex: Tecnologia"
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                  <Folder className="w-4 h-4 text-slate-400" />
-                  Centro de Custo <span className="text-rose-500">*</span>
+                <label
+                  htmlFor="input-centro-custo"
+                  className="flex items-center gap-1.5 text-slate-700 font-medium mb-1.5 text-xs"
+                >
+                  <Folder className="w-3.5 h-3.5 text-slate-400" />
+                  Centro de Custo <span className="text-rose-600">*</span>
                 </label>
                 <input
                   type="text"
@@ -395,15 +460,18 @@ export default function NewPurchase({
                   value={formCentroCusto}
                   onChange={(e) => setFormCentroCusto(e.target.value)}
                   placeholder="Ex: CC-TI-42"
-                  className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-mono focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3.5">
                 <div>
-                  <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                    <Calendar className="w-4 h-4 text-slate-400" />
-                    Previsão Entrega <span className="text-rose-500">*</span>
+                  <label
+                    htmlFor="input-entrega"
+                    className="flex items-center gap-1 text-slate-700 font-medium mb-1.5 text-xs"
+                  >
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    Previsão Entrega <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="date"
@@ -411,14 +479,17 @@ export default function NewPurchase({
                     id="input-entrega"
                     value={formEntrega}
                     onChange={(e) => setFormEntrega(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all cursor-pointer"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs text-slate-900 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors cursor-pointer"
                   />
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-1.5 text-slate-700 font-bold mb-1.5 text-xs">
-                    <MapPin className="w-4 h-4 text-slate-400" />
-                    Local de Entrega <span className="text-rose-500">*</span>
+                  <label
+                    htmlFor="input-destino"
+                    className="flex items-center gap-1 text-slate-700 font-medium mb-1.5 text-xs"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-slate-400" />
+                    Destino Final <span className="text-rose-600">*</span>
                   </label>
                   <input
                     type="text"
@@ -426,8 +497,8 @@ export default function NewPurchase({
                     id="input-destino"
                     value={formDestino}
                     onChange={(e) => setFormDestino(e.target.value)}
-                    placeholder="Ex: Almoxarifado"
-                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-hidden focus:ring-1 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    placeholder="Almoxarifado"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 font-medium focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
                   />
                 </div>
               </div>
@@ -435,14 +506,14 @@ export default function NewPurchase({
           </div>
         </div>
 
-        <div className="flex justify-end pt-2 border-t border-slate-200">
+        <div className="flex justify-end pt-5 border-t border-slate-100">
           <button
             type="submit"
             id="btn-submit-purchase"
-            className="flex items-center gap-1.5 px-8 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-xs hover:shadow-sm cursor-pointer transition-all active:scale-95"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-sm cursor-pointer transition-colors whitespace-nowrap"
           >
-            <Plus className="w-5 h-5" />
-            <span>Salvar Nova Compra</span>
+            <Plus className="w-4 h-4" />
+            <span>Salvar e Abrir Ficha</span>
           </button>
         </div>
       </form>

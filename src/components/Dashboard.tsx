@@ -1,13 +1,38 @@
 import React, { useState, useMemo } from "react";
-import { 
-  ArrowLeft, Package, DollarSign, TrendingUp, Truck, Users, Tag, Calendar, 
-  ShieldCheck, CreditCard, Activity, Layers, Filter, CheckCircle2, Clock, 
-  Plus, ScanLine, Edit2, AlertTriangle, FileSpreadsheet, Check, X, ChevronRight, BarChart3, PieChart as PieChartIcon,
-  Mail, Send, RefreshCw
+import {
+  Package,
+  DollarSign,
+  TrendingUp,
+  Truck,
+  Tag,
+  ShieldCheck,
+  CreditCard,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  FileSpreadsheet,
+  ChevronRight,
+  BarChart3,
+  PieChart as PieChartIcon,
+  Mail,
+  Send,
+  RefreshCw,
+  X
 } from "lucide-react";
-import { 
-  ResponsiveContainer, XAxis, YAxis, CartesianGrid, Tooltip, 
-  BarChart, Bar, Cell, PieChart, Pie, AreaChart, Area, Legend
+import {
+  ResponsiveContainer,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  BarChart,
+  Bar,
+  Cell,
+  PieChart,
+  Pie,
+  AreaChart,
+  Area,
+  Legend
 } from "recharts";
 import { ShoppingList } from "../types";
 
@@ -15,7 +40,7 @@ interface DashboardProps {
   shoppingLists: ShoppingList[];
   monthlyLimit: number;
   monthlyIncome: number;
-  onNavigate: (tab: 'dashboard' | 'lists' | 'categories') => void;
+  onNavigate: (tab: "nova-compra" | "dashboard" | "lists" | "categories") => void;
   onOpenScan: () => void;
   onOpenNewListModal: () => void;
   onSelectList: (list: ShoppingList) => void;
@@ -24,44 +49,42 @@ interface DashboardProps {
 }
 
 const COLORS = [
-  "#4f46e5", // Indigo
-  "#10b981", // Emerald
-  "#f59e0b", // Amber
-  "#06b6d4", // Cyan
-  "#ec4899", // Pink
-  "#8b5cf6", // Violet
-  "#ef4444", // Rose
-  "#3b82f6"  // Blue
+  "#4f46e5",
+  "#0d9488",
+  "#2563eb",
+  "#d97706",
+  "#7c3aed",
+  "#0f172a",
+  "#0284c7",
+  "#e11d48"
 ];
 
 const formatBRL = (value: number) => {
-  return "R$ " + value.toLocaleString("pt-BR", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
+  return (
+    "R$ " +
+    value.toLocaleString("pt-BR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })
+  );
 };
 
 export default function Dashboard({
   shoppingLists,
-  monthlyLimit,
-  monthlyIncome,
   onNavigate,
-  onOpenScan,
-  onOpenNewListModal,
-  onSelectList,
-  userProfileName,
-  onEditProfileName
+  onSelectList
 }: DashboardProps) {
-  // Local UI State
-  const [filterPeriod, setFilterPeriod] = useState<'all' | 'year' | 'month' | 'last_month'>('all');
-  const [filterStatus, setFilterStatus] = useState<'all' | 'CONCLUÍDO' | 'PENDENTE'>('all');
-  const [filterSector, setFilterSector] = useState<string>('all');
-  const [filterCategory, setFilterCategory] = useState<string>('all');
-  const [distributionType, setDistributionType] = useState<'centroCusto' | 'setor'>('centroCusto');
-  
-  // Analyst Name Editing
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [tempName, setTempName] = useState(userProfileName);
+  const [filterPeriod, setFilterPeriod] = useState<
+    "all" | "year" | "month" | "last_month"
+  >("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "CONCLUÍDO" | "PENDENTE"
+  >("all");
+  const [filterSector, setFilterSector] = useState<string>("all");
+  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [distributionType, setDistributionType] = useState<
+    "centroCusto" | "setor"
+  >("centroCusto");
 
   // Email Settings & Integration State
   const [emailEnabled, setEmailEnabled] = useState(false);
@@ -76,7 +99,20 @@ export default function Dashboard({
   const [isLoadingEmail, setIsLoadingEmail] = useState(false);
   const [isSavingEmail, setIsSavingEmail] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
-  const [emailStatusMsg, setEmailStatusMsg] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
+  const [emailStatusMsg, setEmailStatusMsg] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
+  const [showSmtpConfig, setShowSmtpConfig] = useState(false);
+
+  const now = useMemo(() => new Date(), []);
+  const currentYearPrefix = `${now.getFullYear()}`;
+  const currentMonthPrefix = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const lastMonthDate = useMemo(
+    () => new Date(now.getFullYear(), now.getMonth() - 1, 1),
+    [now]
+  );
+  const lastMonthPrefix = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, "0")}`;
 
   React.useEffect(() => {
     fetchEmailSettings();
@@ -127,12 +163,21 @@ export default function Dashboard({
       if (res.ok) {
         const data = await res.json();
         setEmailLogs(data.logs || []);
-        setEmailStatusMsg({ type: 'success', text: 'Configurações de e-mail salvas com sucesso!' });
+        setEmailStatusMsg({
+          type: "success",
+          text: "Configurações de e-mail salvas com sucesso."
+        });
       } else {
-        setEmailStatusMsg({ type: 'error', text: 'Falha ao salvar as configurações.' });
+        setEmailStatusMsg({
+          type: "error",
+          text: "Não foi possível salvar as configurações."
+        });
       }
     } catch (err: any) {
-      setEmailStatusMsg({ type: 'error', text: err.message || 'Erro de conexão.' });
+      setEmailStatusMsg({
+        type: "error",
+        text: err.message || "Erro de conexão."
+      });
     } finally {
       setIsSavingEmail(false);
     }
@@ -140,151 +185,153 @@ export default function Dashboard({
 
   const handleTestEmailSend = async () => {
     setIsTestingEmail(true);
-    setEmailStatusMsg({ type: 'info', text: 'Processando envio de relatório de teste...' });
+    setEmailStatusMsg({
+      type: "info",
+      text: "Processando envio de relatório de teste..."
+    });
     try {
       const res = await fetch("/api/send-report?force=true", {
         method: "POST"
       });
       const data = await res.json();
       if (data.success) {
-        setEmailStatusMsg({ 
-          type: 'success', 
-          text: data.simulated 
-            ? 'Envio SIMULADO realizado com sucesso! (Modo Simulação Ativo - Ver logs abaixo)' 
-            : 'E-mail real enviado com sucesso para o destinatário!' 
+        setEmailStatusMsg({
+          type: "success",
+          text: data.simulated
+            ? "Relatório gerado com sucesso em modo simulado (consulte o histórico ao lado)."
+            : "Relatório enviado com sucesso para o destinatário configurado."
         });
         await fetchEmailSettings();
       } else {
-        setEmailStatusMsg({ type: 'error', text: data.message || 'Erro ao enviar e-mail.' });
+        setEmailStatusMsg({
+          type: "error",
+          text: data.message || "Falha ao processar o envio."
+        });
       }
     } catch (err: any) {
-      setEmailStatusMsg({ type: 'error', text: err.message || 'Erro de conexão ao enviar.' });
+      setEmailStatusMsg({
+        type: "error",
+        text: err.message || "Erro de conexão ao disparar relatório."
+      });
     } finally {
       setIsTestingEmail(false);
     }
   };
 
-  const [showSmtpConfig, setShowSmtpConfig] = useState(false);
-
-  // Extract unique sectors for filter
   const sectorsList = useMemo(() => {
     const list = new Set<string>();
-    shoppingLists.forEach(l => {
+    shoppingLists.forEach((l) => {
       if (l.setor) list.add(l.setor.trim());
     });
     return Array.from(list).filter(Boolean).sort();
   }, [shoppingLists]);
 
-  // Extract unique categories for filter
   const categoriesList = useMemo(() => {
     const list = new Set<string>();
-    shoppingLists.forEach(l => {
+    shoppingLists.forEach((l) => {
       if (l.category) list.add(l.category.trim());
     });
     return Array.from(list).filter(Boolean).sort();
   }, [shoppingLists]);
 
-  // Handle Analyst Name Save
-  const handleSaveName = () => {
-    if (tempName.trim()) {
-      onEditProfileName(tempName.trim());
-      setIsEditingName(false);
-    }
-  };
-
-  // Filtered shopping lists based on interactive controls
   const filteredLists = useMemo(() => {
-    return shoppingLists.filter(list => {
-      // 1. Status Filter
-      if (filterStatus !== 'all' && list.status !== filterStatus) return false;
-      
-      // 2. Sector Filter
-      if (filterSector !== 'all' && list.setor !== filterSector) return false;
+    return shoppingLists.filter((list) => {
+      if (filterStatus !== "all" && list.status !== filterStatus) return false;
+      if (filterSector !== "all" && list.setor !== filterSector) return false;
+      if (filterCategory !== "all" && list.category !== filterCategory)
+        return false;
 
-      // 3. Category Filter
-      if (filterCategory !== 'all' && list.category !== filterCategory) return false;
-      
-      // 4. Period Filter (Based on current simulated year 2026)
       const dateStr = list.dataLancamento || list.date || "";
-      if (filterPeriod === 'year') {
-        if (!dateStr.startsWith("2026")) return false;
-      } else if (filterPeriod === 'month') {
-        if (!dateStr.startsWith("2026-06")) return false;
-      } else if (filterPeriod === 'last_month') {
-        if (!dateStr.startsWith("2026-05")) return false;
+      if (filterPeriod === "year") {
+        if (!dateStr.startsWith(currentYearPrefix)) return false;
+      } else if (filterPeriod === "month") {
+        if (!dateStr.startsWith(currentMonthPrefix)) return false;
+      } else if (filterPeriod === "last_month") {
+        if (!dateStr.startsWith(lastMonthPrefix)) return false;
       }
-      
+
       return true;
     });
-  }, [shoppingLists, filterStatus, filterSector, filterCategory, filterPeriod]);
+  }, [
+    shoppingLists,
+    filterStatus,
+    filterSector,
+    filterCategory,
+    filterPeriod,
+    currentYearPrefix,
+    currentMonthPrefix,
+    lastMonthPrefix
+  ]);
 
-  // Current Month Specific calculations for Budget Progress Gauge
-  const currentMonthSpent = useMemo(() => {
-    return shoppingLists
-      .filter((list) => {
-        const dateStr = list.dataLancamento || list.date || "";
-        return dateStr.startsWith("2026-06");
-      })
-      .reduce((sum, list) => sum + (list.spent || 0), 0);
-  }, [shoppingLists]);
-
-  // Financial KPI Metrics
   const totalSpent = useMemo(() => {
     return filteredLists.reduce((sum, list) => sum + (list.spent || 0), 0);
   }, [filteredLists]);
 
   const totalQuantity = filteredLists.length;
-  
+
   const averageTicket = useMemo(() => {
     return totalQuantity > 0 ? totalSpent / totalQuantity : 0;
   }, [totalSpent, totalQuantity]);
 
   const totalPending = useMemo(() => {
     return filteredLists
-      .filter(list => list.status === 'PENDENTE')
-      .reduce((sum, list) => sum + (list.spent || 0), 0);
+      .filter((list) => list.status === "PENDENTE")
+      .reduce((sum, list) => sum + (list.spent || list.budget || 0), 0);
   }, [filteredLists]);
 
   const totalCompleted = useMemo(() => {
     return filteredLists
-      .filter(list => list.status === 'CONCLUÍDO')
+      .filter((list) => list.status === "CONCLUÍDO")
       .reduce((sum, list) => sum + (list.spent || 0), 0);
   }, [filteredLists]);
 
   const uniqueSuppliersCount = useMemo(() => {
     return new Set(
       filteredLists
-        .map(list => (list.fornecedor || list.name || "").trim().toLowerCase())
+        .map((list) => (list.fornecedor || list.name || "").trim().toLowerCase())
         .filter(Boolean)
     ).size;
   }, [filteredLists]);
 
-  // Budget efficiency percentage
-  const budgetPercentage = useMemo(() => {
-    if (!monthlyLimit) return 0;
-    return (currentMonthSpent / monthlyLimit) * 100;
-  }, [currentMonthSpent, monthlyLimit]);
-
-  // Chart 1: Month-by-Month Expenditure Timeline (Area Chart)
   const monthlyTimelineData = useMemo(() => {
-    const monthlyMap: Record<string, { spent: number; count: number; sortKey: string }> = {};
-    
+    const monthlyMap: Record<
+      string,
+      { spent: number; count: number; sortKey: string }
+    > = {};
+    const months = [
+      "Jan",
+      "Fev",
+      "Mar",
+      "Abr",
+      "Mai",
+      "Jun",
+      "Jul",
+      "Ago",
+      "Set",
+      "Out",
+      "Nov",
+      "Dez"
+    ];
+
     filteredLists.forEach((list) => {
       const dateKey = list.dataLancamento || list.date;
       if (!dateKey || !dateKey.includes("-")) {
-        const fallbackLabel = "Jun/26";
+        const fallbackLabel = `${months[now.getMonth()]}/${String(now.getFullYear()).slice(2)}`;
         if (!monthlyMap[fallbackLabel]) {
-          monthlyMap[fallbackLabel] = { spent: 0, count: 0, sortKey: "2026-06" };
+          monthlyMap[fallbackLabel] = {
+            spent: 0,
+            count: 0,
+            sortKey: currentMonthPrefix
+          };
         }
-        monthlyMap[fallbackLabel].spent += (list.spent || 0);
+        monthlyMap[fallbackLabel].spent += list.spent || 0;
         monthlyMap[fallbackLabel].count += 1;
         return;
       }
-      
-      const parts = dateKey.split("-"); // yyyy-mm-dd
+
+      const parts = dateKey.split("-");
       const year = parts[0];
       const monthIndex = parseInt(parts[1], 10) - 1;
-      const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
       const monthName = months[monthIndex] || "Jan";
       const label = `${monthName}/${year.substring(2)}`;
       const sortKey = `${year}-${parts[1]}`;
@@ -292,7 +339,7 @@ export default function Dashboard({
       if (!monthlyMap[label]) {
         monthlyMap[label] = { spent: 0, count: 0, sortKey };
       }
-      monthlyMap[label].spent += (list.spent || 0);
+      monthlyMap[label].spent += list.spent || 0;
       monthlyMap[label].count += 1;
     });
 
@@ -300,20 +347,20 @@ export default function Dashboard({
       .map(([name, data]) => ({
         name,
         "Valor (R$)": Number(data.spent.toFixed(2)),
-        "Volume": data.count,
+        Volume: data.count,
         sortKey: data.sortKey
       }))
       .sort((a, b) => a.sortKey.localeCompare(b.sortKey));
-  }, [filteredLists]);
+  }, [filteredLists, now, currentMonthPrefix]);
 
-  // Chart 2: Cost Center or Sector Allocation (Toggleable Pie/Donut Chart)
   const allocationData = useMemo(() => {
     const map: Record<string, number> = {};
-    
+
     filteredLists.forEach((list) => {
-      const key = distributionType === 'centroCusto' 
-        ? (list.centroCusto || "Não Informado").trim()
-        : (list.setor || "Não Informado").trim();
+      const key =
+        distributionType === "centroCusto"
+          ? (list.centroCusto || "Não Informado").trim()
+          : (list.setor || "Não Informado").trim();
       map[key] = (map[key] || 0) + (list.spent || 0);
     });
 
@@ -322,20 +369,23 @@ export default function Dashboard({
         name,
         value: Number(value.toFixed(2))
       }))
-      .filter(item => item.value > 0)
+      .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value);
   }, [filteredLists, distributionType]);
 
-  // Chart 3: Top Suppliers Matrix
   const topSuppliersData = useMemo(() => {
     const map: Record<string, { spent: number; count: number }> = {};
-    
+
     filteredLists.forEach((list) => {
-      const supplierName = (list.fornecedor || list.name || "Não Informado").trim();
+      const supplierName = (
+        list.fornecedor ||
+        list.name ||
+        "Não Informado"
+      ).trim();
       if (!map[supplierName]) {
         map[supplierName] = { spent: 0, count: 0 };
       }
-      map[supplierName].spent += (list.spent || 0);
+      map[supplierName].spent += list.spent || 0;
       map[supplierName].count += 1;
     });
 
@@ -345,20 +395,20 @@ export default function Dashboard({
         spent: Number(data.spent.toFixed(2)),
         count: data.count
       }))
-      .filter(item => item.spent > 0)
+      .filter((item) => item.spent > 0)
       .sort((a, b) => b.spent - a.spent)
-      .slice(0, 10);
+      .slice(0, 8);
   }, [filteredLists]);
 
-  // Chart 4: Expense Distribution by Accounting Classification
   const categoryAllocationData = useMemo(() => {
     const map: Record<string, number> = {};
-    
+
     filteredLists.forEach((list) => {
-      // Clean category to show label nicely
       const rawCategory = list.category || "Não Classificado";
-      // Extract code if present
-      const label = rawCategory.length > 35 ? rawCategory.substring(0, 35) + "..." : rawCategory;
+      const label =
+        rawCategory.length > 42
+          ? rawCategory.substring(0, 42) + "..."
+          : rawCategory;
       map[label] = (map[label] || 0) + (list.spent || 0);
     });
 
@@ -367,25 +417,35 @@ export default function Dashboard({
         name,
         value: Number(value.toFixed(2))
       }))
-      .filter(item => item.value > 0)
+      .filter((item) => item.value > 0)
       .sort((a, b) => b.value - a.value)
       .slice(0, 8);
   }, [filteredLists]);
 
-  // Audit alerts & anomalies logic
   const auditAlerts = useMemo(() => {
-    const alerts: Array<{ type: 'warning' | 'info' | 'danger'; message: string; title: string }> = [];
+    const alerts: Array<{
+      type: "warning" | "info" | "danger";
+      message: string;
+      title: string;
+    }> = [];
 
-    // Unassigned cost centers or missing supplier
     let missingCCCount = 0;
     let missingSupplierCount = 0;
     let highInstallmentCount = 0;
 
-    shoppingLists.forEach(l => {
-      if (!l.centroCusto || l.centroCusto === 'Não informado' || l.centroCusto === 'Sem Centro de Custo') {
+    shoppingLists.forEach((l) => {
+      if (
+        !l.centroCusto ||
+        l.centroCusto === "Não informado" ||
+        l.centroCusto === "Sem Centro de Custo"
+      ) {
         missingCCCount++;
       }
-      if (!l.fornecedor || l.fornecedor === 'Sem Fornecedor' || l.fornecedor.toLowerCase().includes('não informado')) {
+      if (
+        !l.fornecedor ||
+        l.fornecedor === "Sem Fornecedor" ||
+        l.fornecedor.toLowerCase().includes("não informado")
+      ) {
         missingSupplierCount++;
       }
       if (l.parcelas && l.parcelas > 6) {
@@ -395,338 +455,315 @@ export default function Dashboard({
 
     if (missingCCCount > 0) {
       alerts.push({
-        type: 'warning',
-        title: 'Estruturação de Centro de Custo',
-        message: `Detectamos ${missingCCCount} lançamentos sem centro de custo especificado. Recomendamos preencher para maior precisão de relatórios.`
+        type: "warning",
+        title: "Alocação de Centro de Custo",
+        message: `${missingCCCount} lançamentos sem centro de custo especificado.`
       });
     }
 
     if (missingSupplierCount > 0) {
       alerts.push({
-        type: 'info',
-        title: 'Qualidade de Cadastro',
-        message: `Existem ${missingSupplierCount} lançamentos cadastrados sem fornecedor formal. Considere padronizar.`
+        type: "info",
+        title: "Padronização de Fornecedores",
+        message: `${missingSupplierCount} lançamentos sem razão social ou fornecedor definido.`
       });
     }
 
     if (highInstallmentCount > 0) {
       alerts.push({
-        type: 'info',
-        title: 'Análise de Parcelamento',
-        message: `Há ${highInstallmentCount} lançamentos parcelados em mais de 6x. Isto impactará os fluxos de provisionamento futuros.`
+        type: "info",
+        title: "Comprometimento Futuro",
+        message: `${highInstallmentCount} compras parceladas acima de 6x impactando exercícios futuros.`
       });
     }
 
     return alerts;
-  }, [shoppingLists, budgetPercentage, currentMonthSpent, monthlyLimit]);
+  }, [shoppingLists]);
 
-  // Top 10 Largest transactions for deep drill-down
   const topTransactions = useMemo(() => {
     return [...filteredLists]
       .sort((a, b) => b.spent - a.spent)
-      .slice(0, 10);
+      .slice(0, 8);
   }, [filteredLists]);
 
+  const hasFilters =
+    filterPeriod !== "all" ||
+    filterStatus !== "all" ||
+    filterSector !== "all" ||
+    filterCategory !== "all";
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-300">
-      
-      {/* SECTION 1: HEADER & ANALYST PROFILE */}
-      <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden">
-        {/* Subtle grid lines background overlay */}
-        <div className="absolute inset-0 bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
-        
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div className="space-y-2 w-full flex flex-col items-center text-center">
-            <div className="flex items-center gap-2 justify-center">
-              <span className="px-2.5 py-1 bg-slate-800/60 text-slate-300 text-[10px] font-semibold tracking-wider uppercase rounded-lg border border-slate-700/50 flex items-center gap-1.5">
-                <Activity className="w-3.5 h-3.5 text-indigo-400" />
-                Painel de Business Intelligence (BI)
-              </span>
-            </div>
-            <h1 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-100" style={{ fontFamily: "Arial, sans-serif" }}>
-              Analise de Compras
-            </h1>
-
-          </div>
-        </div>
-      </div>
-
-      {/* SECTION 2: INTERACTIVE BI FILTERS */}
-      <div className="bg-white border border-slate-100 rounded-3xl p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-5">
-        <div className="flex items-center gap-2.5">
-          <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-            <Filter className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-sm font-bold text-slate-900">Filtros de Dados Operacionais</h2>
-            <p className="text-[11px] text-slate-400">Refine a análise do painel de controle em tempo real</p>
-          </div>
+    <div className="space-y-6">
+      {/* Executive Page Header + Integrated Filter Bar */}
+      <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+            Análise de Compras
+          </h1>
+          <p className="text-sm text-slate-500 mt-1">
+            Visão consolidada de desembolsos, provisões, centros de custo e
+            classificação contábil.
+          </p>
         </div>
 
-        {/* Filters Grid */}
-        <div className="flex flex-wrap items-center gap-3">
-          
-          {/* Period Selection */}
-          <div className="flex bg-slate-100 rounded-xl p-1 border border-slate-200/50">
+        {/* Clean Segmented & Dropdown Filter Strip */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex items-center gap-1 p-1 bg-slate-200/60 rounded-lg">
             <button
-              onClick={() => setFilterPeriod('all')}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${filterPeriod === 'all' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+              onClick={() => setFilterPeriod("all")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                filterPeriod === "all"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
               Tudo
             </button>
             <button
-              onClick={() => setFilterPeriod('year')}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${filterPeriod === 'year' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+              onClick={() => setFilterPeriod("year")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                filterPeriod === "year"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
-              2026
+              {currentYearPrefix}
             </button>
             <button
-              onClick={() => setFilterPeriod('month')}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${filterPeriod === 'month' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+              onClick={() => setFilterPeriod("month")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                filterPeriod === "month"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
-              Jun/26
+              Mês Atual
             </button>
             <button
-              onClick={() => setFilterPeriod('last_month')}
-              className={`px-3 py-1.5 text-[11px] font-bold rounded-lg transition-all cursor-pointer ${filterPeriod === 'last_month' ? 'bg-white text-slate-900 shadow-xs' : 'text-slate-500 hover:text-slate-900'}`}
+              onClick={() => setFilterPeriod("last_month")}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                filterPeriod === "last_month"
+                  ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
             >
-              Mai/26
+              Mês Anterior
             </button>
           </div>
 
-          {/* Status Selection */}
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value as any)}
-            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl focus:outline-none cursor-pointer transition-colors"
+            className="bg-white border border-slate-200 text-xs font-medium text-slate-700 px-3 py-2 rounded-lg focus:outline-hidden focus:border-indigo-600 cursor-pointer"
           >
             <option value="all">Status: Todos</option>
-            <option value="CONCLUÍDO">Status: Pago / Concluído</option>
-            <option value="PENDENTE">Status: Provisão / Pendente</option>
+            <option value="CONCLUÍDO">Concluídos</option>
+            <option value="PENDENTE">Pendentes</option>
           </select>
 
-          {/* Department Sector Selection */}
           <select
             value={filterSector}
             onChange={(e) => setFilterSector(e.target.value)}
-            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl focus:outline-none cursor-pointer transition-colors max-w-[180px] truncate"
+            className="bg-white border border-slate-200 text-xs font-medium text-slate-700 px-3 py-2 rounded-lg focus:outline-hidden focus:border-indigo-600 cursor-pointer max-w-[160px] truncate"
           >
             <option value="all">Setor: Todos</option>
             {sectorsList.map((sec) => (
-              <option key={sec} value={sec}>{sec}</option>
+              <option key={sec} value={sec}>
+                {sec}
+              </option>
             ))}
           </select>
 
-          {/* Category Selection */}
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
-            className="bg-slate-50 hover:bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 px-3 py-2 rounded-xl focus:outline-none cursor-pointer transition-colors max-w-[220px] truncate"
-            title="Filtrar por classificação contábil / categoria"
+            className="bg-white border border-slate-200 text-xs font-medium text-slate-700 px-3 py-2 rounded-lg focus:outline-hidden focus:border-indigo-600 cursor-pointer max-w-[200px] truncate"
           >
-            <option value="all">Categoria: Todas</option>
+            <option value="all">Conta: Todas</option>
             {categoriesList.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
             ))}
           </select>
 
-          {/* Reset Filters Shortcut */}
-          {(filterPeriod !== 'all' || filterStatus !== 'all' || filterSector !== 'all' || filterCategory !== 'all') && (
+          {hasFilters && (
             <button
               onClick={() => {
-                setFilterPeriod('all');
-                setFilterStatus('all');
-                setFilterSector('all');
-                setFilterCategory('all');
+                setFilterPeriod("all");
+                setFilterStatus("all");
+                setFilterSector("all");
+                setFilterCategory("all");
               }}
-              className="px-2.5 py-2 text-rose-500 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold rounded-xl transition-all cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-2 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-colors cursor-pointer whitespace-nowrap"
             >
-              Limpar Filtros
+              <X className="w-3.5 h-3.5" />
+              <span>Limpar</span>
             </button>
           )}
-
         </div>
       </div>
 
-      {/* SECTION 3: KEY PERFORMANCE INDICATORS (KPIs) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        
-        {/* KPI 1: Total Desembolsado */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-slate-400 tracking-tight uppercase">Desembolso Total</span>
-            <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded-lg">
-              <DollarSign className="w-4 h-4" />
+      {/* 4-Column KPI Strip (Single-Elevation, Tabular Numerals) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">
+              Desembolso Total
             </span>
+            <DollarSign className="w-4 h-4 text-slate-400" />
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-black text-slate-900 tracking-tight block font-sans">
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums tracking-tight block">
               {formatBRL(totalSpent)}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1 font-medium font-mono">
-              Soma: {formatBRL(totalCompleted)} Concluído
+            <span className="text-xs text-slate-400 block mt-1 font-mono tabular-nums">
+              {formatBRL(totalCompleted)} liquidado
             </span>
           </div>
         </div>
 
-        {/* KPI 2: Provisões Pendentes */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-slate-400 tracking-tight uppercase">Provisionamento</span>
-            <span className="p-1.5 bg-amber-50 text-amber-600 rounded-lg">
-              <Clock className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">
+              Provisões em Aberto
             </span>
+            <Clock className="w-4 h-4 text-amber-600" />
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-black text-slate-900 tracking-tight block font-sans">
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums tracking-tight block">
               {formatBRL(totalPending)}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1 font-medium">
-              Contas com pagamento pendente
+            <span className="text-xs text-slate-400 block mt-1">
+              Lançamentos com status pendente
             </span>
           </div>
         </div>
 
-        {/* KPI 3: Ticket Médio por Lançamento */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-slate-400 tracking-tight uppercase">Ticket Médio</span>
-            <span className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg">
-              <TrendingUp className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">
+              Ticket Médio
             </span>
+            <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-black text-slate-900 tracking-tight block font-sans">
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums tracking-tight block">
               {formatBRL(averageTicket)}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1 font-medium">
-              Por transação compilada
+            <span className="text-xs text-slate-400 block mt-1">
+              Média por ordem de compra
             </span>
           </div>
         </div>
 
-        {/* KPI 4: Volume de Compras */}
-        <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-2xs flex flex-col justify-between min-h-[130px]">
-          <div className="flex items-start justify-between">
-            <span className="text-xs font-bold text-slate-400 tracking-tight uppercase">Transações</span>
-            <span className="p-1.5 bg-cyan-50 text-cyan-600 rounded-lg">
-              <Package className="w-4 h-4" />
+        <div className="bg-white border border-slate-200/80 rounded-xl p-5 flex flex-col justify-between">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-slate-500">
+              Volume Operacional
             </span>
+            <Package className="w-4 h-4 text-indigo-600" />
           </div>
-          <div className="mt-4">
-            <span className="text-2xl font-black text-slate-900 tracking-tight block font-sans">
+          <div className="mt-3">
+            <span className="text-2xl font-bold text-slate-900 font-mono tabular-nums tracking-tight block">
               {totalQuantity}
             </span>
-            <span className="text-[10px] text-slate-400 block mt-1 font-medium font-mono">
+            <span className="text-xs text-slate-400 block mt-1 font-mono tabular-nums">
               {uniqueSuppliersCount} fornecedores ativos
             </span>
           </div>
         </div>
-
       </div>
 
-      {/* QUICK SHORTCUT ACTIONS BAR */}
-      <div className="flex flex-wrap items-center gap-3 bg-indigo-50/40 p-4 rounded-2xl border border-indigo-100/60 justify-between">
-        <div className="flex items-center gap-2 text-slate-700">
-          <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
-          <span className="text-xs font-bold">Atalhos de Ação do Analista:</span>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={onOpenNewListModal}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 duration-100"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Novo Lançamento</span>
-          </button>
-          <button
-            onClick={onOpenScan}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 duration-100"
-          >
-            <ScanLine className="w-3.5 h-3.5 text-indigo-500" />
-            <span>Importar OCR Nota</span>
-          </button>
-          <button
-            onClick={() => onNavigate("lists")}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer active:scale-95 duration-100"
-          >
-            <span>Ir para Livro Razão</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      </div>
-
-      {/* SECTION 4: ADVANCED GRAPHICAL PLOTS (BENTO GRID) */}
+      {/* Primary Charts Grid (8 + 4) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Plot 1: Monthly Outflow Trend vs Volumetric Density (8 Cols) */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs lg:col-span-8 min-w-0 overflow-hidden">
+        {/* Monthly Outflow Trend */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 lg:col-span-8 min-w-0">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-                <BarChart3 className="w-4 h-4 text-indigo-500" />
-                Linha de Tendência Temporal: Desembolso vs Volume de Compras
-              </h3>
-              <p className="text-[11px] text-slate-400 mt-0.5">Análise de sazonalidade e fluxo de desembolsos mensais compilados</p>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+                Evolução Temporal: Desembolso vs. Volume
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Sazonalidade mensal de faturamento e quantidade de ordens
+              </p>
             </div>
           </div>
 
-          <div className="h-80 flex items-center justify-center">
+          <div className="h-72 flex items-center justify-center">
             {monthlyTimelineData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyTimelineData} margin={{ top: 15, right: 10, left: 10, bottom: 10 }}>
+                <AreaChart
+                  data={monthlyTimelineData}
+                  margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                >
                   <defs>
                     <linearGradient id="colorSpent" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.25}/>
-                      <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.01}/>
+                      <stop offset="5%" stopColor="#4f46e5" stopOpacity={0.18} />
+                      <stop offset="95%" stopColor="#4f46e5" stopOpacity={0.0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="name" 
-                    tick={{ fill: '#64748b', fontSize: 10, fontWeight: 'bold' }}
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    vertical={false}
+                    stroke="#e2e8f0"
+                  />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                   />
-                  <YAxis 
+                  <YAxis
                     yAxisId="left"
-                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(val) => `R$ ${val.toLocaleString('pt-BR', { maximumFractionDigits: 0 })}`}
+                    tickFormatter={(val) =>
+                      `R$ ${val.toLocaleString("pt-BR", {
+                        maximumFractionDigits: 0
+                      })}`
+                    }
                   />
-                  <YAxis 
+                  <YAxis
                     yAxisId="right"
                     orientation="right"
-                    tick={{ fill: '#06b6d4', fontSize: 10 }}
+                    tick={{ fill: "#0d9488", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(val) => `${val} un`}
+                    tickFormatter={(val) => `${val}`}
                   />
-                  <Tooltip 
+                  <Tooltip
                     formatter={(value: any, name: string) => {
-                      if (name === "Volume") return [value, "Quantidade de Compras"];
-                      return [formatBRL(Number(value)), "Valor Total Faturado"];
+                      if (name === "Volume")
+                        return [value, "Ordens de Compra"];
+                      return [formatBRL(Number(value)), "Valor Realizado"];
                     }}
-                    contentStyle={{ borderRadius: '16px', borderColor: '#e2e8f0', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05)' }}
+                    contentStyle={{
+                      borderRadius: "10px",
+                      borderColor: "#e2e8f0",
+                      fontSize: "12px",
+                      boxShadow: "0 4px 12px rgba(15,23,42,0.06)"
+                    }}
                   />
-                  <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
-                  <Area 
+                  <Legend wrapperStyle={{ fontSize: "12px", paddingTop: "8px" }} />
+                  <Area
                     yAxisId="left"
-                    type="monotone" 
-                    dataKey="Valor (R$)" 
-                    stroke="#4f46e5" 
-                    strokeWidth={3}
-                    fillOpacity={1} 
-                    fill="url(#colorSpent)" 
-                    activeDot={{ r: 6 }}
-                  />
-                  <Area 
-                    yAxisId="right"
-                    type="monotone" 
-                    dataKey="Volume" 
-                    stroke="#06b6d4" 
+                    type="monotone"
+                    dataKey="Valor (R$)"
+                    stroke="#4f46e5"
                     strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#colorSpent)"
+                    activeDot={{ r: 5 }}
+                  />
+                  <Area
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="Volume"
+                    stroke="#0d9488"
+                    strokeWidth={2}
                     strokeDasharray="4 4"
                     fill="none"
                     activeDot={{ r: 4 }}
@@ -734,192 +771,238 @@ export default function Dashboard({
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="text-center space-y-2">
-                <AlertTriangle className="w-8 h-8 text-slate-300 mx-auto" />
-                <p className="text-xs text-slate-400 italic">Nenhum registro encontrado para gerar a linha temporal.</p>
-              </div>
+              <p className="text-xs text-slate-400">
+                Sem lançamentos no período selecionado para exibir tendência.
+              </p>
             )}
           </div>
         </div>
 
-        {/* Plot 2: Cost Allocation Toggle - Cost Center vs Sector (4 Cols) */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs lg:col-span-4 min-w-0 overflow-hidden flex flex-col justify-between">
+        {/* Allocation Donut */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 lg:col-span-4 min-w-0 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-                <PieChartIcon className="w-4 h-4 text-indigo-500" />
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <PieChartIcon className="w-4 h-4 text-indigo-600" />
                 Alocação Corporativa
-              </h3>
-              
-              {/* Distribution toggle button */}
-              <div className="flex bg-slate-100 rounded-lg p-0.5 border border-slate-200/50">
+              </h2>
+
+              <div className="flex bg-slate-100 rounded-lg p-0.5">
                 <button
-                  onClick={() => setDistributionType('centroCusto')}
-                  className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all cursor-pointer ${distributionType === 'centroCusto' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'}`}
-                  title="Alocar por Centro de Custo"
+                  onClick={() => setDistributionType("centroCusto")}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                    distributionType === "centroCusto"
+                      ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
                 >
                   C. Custo
                 </button>
                 <button
-                  onClick={() => setDistributionType('setor')}
-                  className={`px-2 py-1 text-[9px] font-bold rounded-md transition-all cursor-pointer ${distributionType === 'setor' ? 'bg-white text-slate-900 shadow-2xs' : 'text-slate-500 hover:text-slate-900'}`}
-                  title="Alocar por Setor / Departamento"
+                  onClick={() => setDistributionType("setor")}
+                  className={`px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
+                    distributionType === "setor"
+                      ? "bg-white text-slate-900 shadow-2xs font-semibold"
+                      : "text-slate-600 hover:text-slate-900"
+                  }`}
                 >
                   Setor
                 </button>
               </div>
             </div>
-            <p className="text-[11px] text-slate-400 mb-6">Visualização proporcional de gastos por {distributionType === 'centroCusto' ? 'Centro de Custo' : 'Setor ou Departamento'}</p>
+            <p className="text-xs text-slate-500">
+              Proporção por{" "}
+              {distributionType === "centroCusto"
+                ? "Centro de Custo"
+                : "Setor"}
+            </p>
           </div>
 
-          <div className="h-64 flex items-center justify-center relative">
+          <div className="h-52 relative flex items-center justify-center my-2">
             {allocationData.length > 0 ? (
-              <div className="w-full h-full flex flex-col items-center justify-center">
-                <ResponsiveContainer width="100%" height="80%">
+              <>
+                <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
                       data={allocationData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={55}
-                      outerRadius={75}
-                      paddingAngle={3}
+                      innerRadius={56}
+                      outerRadius={76}
+                      paddingAngle={2}
                       dataKey="value"
                     >
-                      {allocationData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      {allocationData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={COLORS[index % COLORS.length]}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip 
-                      formatter={(value: any) => [formatBRL(Number(value)), 'Gasto Total']}
-                      contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0', fontSize: '11px' }}
+                    <Tooltip
+                      formatter={(value: any) => [
+                        formatBRL(Number(value)),
+                        "Total"
+                      ]}
+                      contentStyle={{
+                        borderRadius: "10px",
+                        borderColor: "#e2e8f0",
+                        fontSize: "12px"
+                      }}
                     />
                   </PieChart>
                 </ResponsiveContainer>
-                
-                {/* Total overlay in center text */}
-                <div className="absolute top-[35%] left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-                  <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 block">Total</span>
-                  <span className="text-sm font-extrabold text-slate-800 leading-none">{formatBRL(totalSpent)}</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-[11px] text-slate-400">Total</span>
+                  <span className="text-xs font-mono tabular-nums font-bold text-slate-900">
+                    {formatBRL(totalSpent)}
+                  </span>
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="text-center space-y-1">
-                <p className="text-xs text-slate-400 italic">Sem dados proporcionais para exibir.</p>
-              </div>
+              <p className="text-xs text-slate-400">
+                Sem dados proporcionais no período.
+              </p>
             )}
           </div>
 
-          {/* Clean custom Legend */}
-          <div className="max-h-24 overflow-y-auto border-t border-slate-50 pt-2.5 mt-2 space-y-1 scrollbar-thin">
+          <div className="border-t border-slate-100 pt-3 space-y-1.5 max-h-28 overflow-y-auto">
             {allocationData.slice(0, 4).map((item, idx) => {
               const pct = totalSpent > 0 ? (item.value / totalSpent) * 100 : 0;
               return (
-                <div key={item.name} className="flex items-center justify-between text-[11px]">
-                  <div className="flex items-center gap-1.5 truncate max-w-[170px]">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[idx % COLORS.length] }} />
-                    <span className="text-slate-600 font-medium truncate" title={item.name}>{item.name}</span>
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between text-xs"
+                >
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <span
+                      className="w-2.5 h-2.5 rounded-xs shrink-0"
+                      style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                    />
+                    <span
+                      className="text-slate-600 truncate"
+                      title={item.name}
+                    >
+                      {item.name}
+                    </span>
                   </div>
-                  <span className="font-mono font-bold text-slate-800">{pct.toFixed(1)}%</span>
+                  <span className="font-mono tabular-nums font-semibold text-slate-900 shrink-0">
+                    {pct.toFixed(1)}%
+                  </span>
                 </div>
               );
             })}
-            {allocationData.length > 4 && (
-              <div className="text-[10px] text-slate-400 italic text-center">
-                + {allocationData.length - 4} classificações adicionais
-              </div>
-            )}
           </div>
         </div>
-
       </div>
 
+      {/* Secondary Charts Grid (6 + 6) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        
-        {/* Plot 3: Supplier Allocation Matrix (Horizontal Bar Chart) */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs min-w-0 overflow-hidden">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-              <Truck className="w-4 h-4 text-indigo-500" />
-              Matriz de Concentração de Fornecedores (Top 10)
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Top 10 fornecedores pelo montante total financeiro acumulado</p>
-          </div>
+        {/* Top Suppliers */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 min-w-0">
+          <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <Truck className="w-4 h-4 text-indigo-600" />
+            Concentração por Fornecedor
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Maiores parceiros comerciais por volume faturado
+          </p>
 
-          <div className="h-64 mt-6 flex items-center justify-center">
+          <div className="h-64 mt-5 flex items-center justify-center">
             {topSuppliersData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={topSuppliersData} 
+                <BarChart
+                  data={topSuppliersData}
                   layout="vertical"
-                  margin={{ top: 10, right: 30, left: 35, bottom: 10 }}
+                  margin={{ top: 5, right: 24, left: 20, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis 
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    horizontal={false}
+                    stroke="#e2e8f0"
+                  />
+                  <XAxis
                     type="number"
-                    tick={{ fill: '#64748b', fontSize: 10 }}
+                    tick={{ fill: "#64748b", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(val) => `R$ ${val}`}
                   />
-                  <YAxis 
-                    dataKey="name" 
+                  <YAxis
+                    dataKey="name"
                     type="category"
-                    tick={{ fill: '#475569', fontSize: 10, fontWeight: 'medium' }}
+                    tick={{ fill: "#334155", fontSize: 11 }}
                     axisLine={false}
                     tickLine={false}
-                    width={90}
+                    width={100}
                   />
-                  <Tooltip 
-                    formatter={(value: any, name: string, props: any) => [
-                      `${formatBRL(Number(value))} (${props.payload.count} compras)`, 'Investimento'
+                  <Tooltip
+                    formatter={(value: any, _name: string, props: any) => [
+                      `${formatBRL(Number(value))} (${props.payload.count} compras)`,
+                      "Volume"
                     ]}
-                    contentStyle={{ borderRadius: '12px', borderColor: '#e2e8f0', fontSize: '11px' }}
+                    contentStyle={{
+                      borderRadius: "10px",
+                      borderColor: "#e2e8f0",
+                      fontSize: "12px"
+                    }}
                   />
-                  <Bar dataKey="spent" radius={[0, 6, 6, 0]} barSize={20}>
-                    {topSuppliersData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[(index + 1) % COLORS.length]} />
+                  <Bar dataKey="spent" radius={[0, 4, 4, 0]} barSize={18}>
+                    {topSuppliersData.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <span className="text-xs text-slate-400 italic">Sem lançamentos para avaliar fornecedores</span>
+              <span className="text-xs text-slate-400">
+                Sem lançamentos para avaliar fornecedores.
+              </span>
             )}
           </div>
         </div>
 
-        {/* Plot 4: Concentration by Accounting Classification (Chart of Accounts) */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs min-w-0 overflow-hidden flex flex-col justify-between">
+        {/* Chart of Accounts Concentration */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 min-w-0 flex flex-col">
           <div>
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-              <Tag className="w-4 h-4 text-indigo-500" />
-              Gasto por Classificação / Categoria Contábil
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Distribuição do fluxo de saída pelos planos de contas mais solicitados</p>
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-indigo-600" />
+              Gasto por Classificação Contábil
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Distribuição acumulada pelas contas de despesa mais acionadas
+            </p>
           </div>
 
-          <div className="space-y-4 mt-6 overflow-y-auto max-h-[250px] pr-2 scrollbar-thin">
+          <div className="space-y-3.5 mt-5 overflow-y-auto max-h-64 pr-1 flex-1">
             {categoryAllocationData.length > 0 ? (
               categoryAllocationData.map((item, idx) => {
-                const percentageOfTotal = totalSpent > 0 ? (item.value / totalSpent) * 100 : 0;
+                const percentageOfTotal =
+                  totalSpent > 0 ? (item.value / totalSpent) * 100 : 0;
                 return (
                   <div key={item.name} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-bold text-slate-700 truncate max-w-[300px]" title={item.name}>
+                    <div className="flex items-center justify-between text-xs gap-3">
+                      <span
+                        className="font-medium text-slate-800 truncate"
+                        title={item.name}
+                      >
                         {item.name}
                       </span>
-                      <div className="flex items-center gap-2 font-mono text-slate-500 shrink-0">
-                        <span className="font-semibold text-slate-900">{formatBRL(item.value)}</span>
+                      <div className="flex items-center gap-2 font-mono tabular-nums text-slate-500 shrink-0">
+                        <span className="font-semibold text-slate-900">
+                          {formatBRL(item.value)}
+                        </span>
                         <span>({percentageOfTotal.toFixed(1)}%)</span>
                       </div>
                     </div>
-                    
-                    {/* Visual Progress gauge */}
-                    <div className="w-full bg-slate-50 h-2.5 rounded-full overflow-hidden border border-slate-100/50">
-                      <div 
-                        className="h-full rounded-full transition-all duration-500"
-                        style={{ 
+
+                    <div className="w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
                           width: `${percentageOfTotal}%`,
                           backgroundColor: COLORS[idx % COLORS.length]
                         }}
@@ -929,427 +1012,466 @@ export default function Dashboard({
                 );
               })
             ) : (
-              <p className="text-xs text-slate-400 italic py-6 text-center">Nenhuma categoria com gasto registrado.</p>
-            )}
-          </div>
-        </div>
-
-      </div>
-
-      {/* SECTION 5: AUDITOR INSIGHTS & COMPLIANCE ANOMALIES */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Audit Alerts (5 Cols) */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs lg:col-span-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              <h3 className="text-sm font-bold text-slate-900 tracking-tight">Relatório de Compliance & Auditoria Interna</h3>
-            </div>
-            <p className="text-[11px] text-slate-400 mb-5">Alertas de segurança estrutural, integridade cadastral e aderência ao orçamento</p>
-          </div>
-
-          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin flex-1">
-            {auditAlerts.length > 0 ? (
-              auditAlerts.map((alert, idx) => (
-                <div 
-                  key={idx} 
-                  className={`p-3.5 rounded-2xl border flex gap-3 ${
-                    alert.type === 'danger' ? 'bg-rose-50/50 border-rose-100 text-rose-800' :
-                    alert.type === 'warning' ? 'bg-amber-50/50 border-amber-100 text-amber-800' :
-                    'bg-sky-50/50 border-sky-100 text-sky-800'
-                  }`}
-                >
-                  <div className="shrink-0 mt-0.5">
-                    <AlertTriangle className={`w-4 h-4 ${
-                      alert.type === 'danger' ? 'text-rose-600' :
-                      alert.type === 'warning' ? 'text-amber-600' :
-                      'text-sky-600'
-                    }`} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold leading-tight mb-0.5">{alert.title}</h4>
-                    <p className="text-[10.5px] leading-relaxed opacity-90">{alert.message}</p>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-6 bg-emerald-50/40 rounded-2xl border border-emerald-100 text-center text-emerald-800 space-y-2">
-                <CheckCircle2 className="w-7 h-7 text-emerald-600 mx-auto" />
-                <h4 className="text-xs font-bold">Base Totalmente Conforme!</h4>
-                <p className="text-[10px] opacity-90">Nenhuma inconformidade cadastral ou orçamentária detectada nos algoritmos ativos.</p>
+              <div className="h-full flex items-center justify-center">
+                <p className="text-xs text-slate-400">
+                  Nenhuma conta com gasto registrado.
+                </p>
               </div>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Disclaimer metadata */}
-          <div className="mt-5 border-t border-slate-50 pt-3 flex items-center justify-between text-[10px] text-slate-400 font-mono">
-            <span>Scan Engine v2.1</span>
-            <span>Próxima varredura: On-Demand</span>
+      {/* Audit Compliance & Top Transactions Table (5 + 7) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 lg:col-span-5 flex flex-col justify-between">
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              Conformidade Cadastral
+            </h2>
+            <p className="text-xs text-slate-500 mt-0.5 mb-5">
+              Verificação automática de preenchimento contábil e parcelamento
+            </p>
+
+            <div className="space-y-3">
+              {auditAlerts.length > 0 ? (
+                auditAlerts.map((alert, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-3.5 rounded-xl border flex gap-3 ${
+                      alert.type === "danger"
+                        ? "bg-rose-50/60 border-rose-200 text-rose-900"
+                        : alert.type === "warning"
+                          ? "bg-amber-50/60 border-amber-200 text-amber-900"
+                          : "bg-slate-50 border-slate-200 text-slate-800"
+                    }`}
+                  >
+                    <AlertTriangle
+                      className={`w-4 h-4 shrink-0 mt-0.5 ${
+                        alert.type === "danger"
+                          ? "text-rose-600"
+                          : alert.type === "warning"
+                            ? "text-amber-600"
+                            : "text-indigo-600"
+                      }`}
+                    />
+                    <div>
+                      <h4 className="text-xs font-semibold">{alert.title}</h4>
+                      <p className="text-xs opacity-85 mt-0.5 leading-relaxed">
+                        {alert.message}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="p-6 bg-emerald-50/50 rounded-xl border border-emerald-200/80 text-center text-emerald-900 space-y-1.5">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-600 mx-auto" />
+                  <h4 className="text-xs font-semibold">
+                    Base integralmente conforme
+                  </h4>
+                  <p className="text-xs text-emerald-700">
+                    Todos os lançamentos possuem fornecedor e centro de custo
+                    válidos.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+            <span className="text-xs text-slate-500">
+              Deseja inspecionar todos os registros?
+            </span>
+            <button
+              onClick={() => onNavigate("lists")}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-700 cursor-pointer whitespace-nowrap"
+            >
+              <span>Abrir Livro Razão</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
 
-        {/* Drill-down of largest transactions (7 Cols) */}
-        <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-2xs lg:col-span-7 flex flex-col justify-between">
-          <div>
-            <h3 className="text-sm font-bold text-slate-900 tracking-tight flex items-center gap-1.5">
-              <CreditCard className="w-4 h-4 text-indigo-500" />
-              Transações de Maior Impacto Financeiro (Top 10)
-            </h3>
-            <p className="text-[11px] text-slate-400 mt-0.5">Análise prioritária dos desembolsos de maior valor. Clique em qualquer linha para auditar ou editar no Razão.</p>
+        {/* High-Impact Transactions Table */}
+        <div className="bg-white border border-slate-200/80 rounded-2xl p-6 lg:col-span-7 flex flex-col">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <CreditCard className="w-4 h-4 text-indigo-600" />
+                Transações de Maior Impacto
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Clique em qualquer linha para abrir a ficha detalhada
+              </p>
+            </div>
+            <FileSpreadsheet className="w-4 h-4 text-slate-400" />
           </div>
 
-          <div className="mt-5 overflow-x-auto border border-slate-100 rounded-2xl flex-1">
+          <div className="overflow-x-auto border border-slate-200/80 rounded-xl flex-1">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold">
-                  <th className="p-3">Data</th>
-                  <th className="p-3">Fornecedor</th>
-                  <th className="p-3">Classificação / C. Custo</th>
-                  <th className="p-3 text-right">Valor Total</th>
-                  <th className="p-3 text-center">Auditar</th>
+                <tr className="bg-slate-50/80 border-b border-slate-200/80 text-slate-500 font-semibold">
+                  <th className="py-2.5 px-3">Data</th>
+                  <th className="py-2.5 px-3">Fornecedor</th>
+                  <th className="py-2.5 px-3">Classificação / C.C.</th>
+                  <th className="py-2.5 px-3 text-right">Valor</th>
+                  <th className="py-2.5 px-3 text-right w-10"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-100">
                 {topTransactions.length > 0 ? (
                   topTransactions.map((list) => {
-                    const formattedDate = list.dataLancamento 
-                      ? list.dataLancamento.split("-").reverse().join("/") 
-                      : list.date.split("-").reverse().join("/");
-                    
+                    const formattedDate = list.dataLancamento
+                      ? list.dataLancamento.split("-").reverse().join("/")
+                      : list.date;
+
                     return (
-                      <tr 
-                        key={list.id} 
+                      <tr
+                        key={list.id}
                         onClick={() => onSelectList(list)}
-                        className="hover:bg-slate-50/80 cursor-pointer transition-colors group"
+                        className="hover:bg-slate-50/80 cursor-pointer transition-colors h-10"
                       >
-                        <td className="p-3 font-mono font-medium text-slate-500 whitespace-nowrap">{formattedDate}</td>
-                        <td className="p-3 font-bold text-slate-800 truncate max-w-[140px]" title={list.fornecedor || list.name}>
+                        <td className="py-2 px-3 font-mono tabular-nums text-slate-500 whitespace-nowrap">
+                          {formattedDate}
+                        </td>
+                        <td
+                          className="py-2 px-3 font-semibold text-slate-900 truncate max-w-[150px]"
+                          title={list.fornecedor || list.name}
+                        >
                           {list.fornecedor || list.name || "Não informado"}
                         </td>
-                        <td className="p-3 text-slate-500 whitespace-nowrap">
-                          <span className="block font-semibold text-slate-700 max-w-[160px] truncate" title={list.category}>
-                            {list.category || "Sem categoria"}
+                        <td className="py-2 px-3 text-slate-600 whitespace-nowrap">
+                          <span
+                            className="max-w-[170px] truncate inline-block align-bottom"
+                            title={list.category}
+                          >
+                            {list.category || "Sem conta"}
                           </span>
-                          <span className="block text-[9.5px] text-slate-400 font-mono">
+                          <span className="text-slate-300 mx-1.5">·</span>
+                          <span className="font-mono tabular-nums text-slate-400">
                             {list.centroCusto || "CC-Geral"}
                           </span>
                         </td>
-                        <td className="p-3 text-right font-sans font-bold text-slate-950 whitespace-nowrap">
+                        <td className="py-2 px-3 text-right font-mono tabular-nums font-semibold text-slate-900 whitespace-nowrap">
                           {formatBRL(list.spent)}
                         </td>
-                        <td className="p-3 text-center">
-                          <button className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 rounded-lg transition-all group-hover:scale-110">
-                            <ChevronRight className="w-4 h-4" />
-                          </button>
+                        <td className="py-2 px-3 text-right text-slate-400">
+                          <ChevronRight className="w-4 h-4 inline" />
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400 italic">
-                      Aguardando lançamentos para compilar transações de impacto.
+                    <td
+                      colSpan={5}
+                      className="py-10 px-4 text-center text-slate-400"
+                    >
+                      Nenhum lançamento disponível para compilar ranking.
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
           </div>
-
-          <div className="mt-4 text-right">
-            <span className="text-[10px] text-slate-400 font-medium">
-              * Clique em uma linha para abrir a transação no painel de edição
-            </span>
-          </div>
         </div>
-
       </div>
 
-      {/* SECTION 6: DAILY EMAIL REPORTS INTEGRATION */}
-      <div className="mt-8 bg-slate-50/50 border border-slate-100 rounded-3xl p-6 shadow-2xs space-y-6">
+      {/* Daily Email Reports Configuration */}
+      <div className="bg-white border border-slate-200/80 rounded-2xl p-6 space-y-6">
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-3xs shrink-0">
-              <Mail className="w-5 h-5" />
+            <div className="w-9 h-9 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+              <Mail className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-extrabold text-slate-900 tracking-tight">Integração e Relatórios Diários por E-mail</h3>
-              <p className="text-xs text-slate-500">Envie de forma automática ou sob demanda o resumo consolidado de lançamentos e orçamentos corporativos</p>
+              <h2 className="text-sm font-bold text-slate-900">
+                Relatórios Diários por E-mail
+              </h2>
+              <p className="text-xs text-slate-500">
+                Agende ou dispare sob demanda o consolidado financeiro da
+                operação
+              </p>
             </div>
           </div>
-          
-          <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-3">
+            <span
+              className={`text-xs font-medium inline-flex items-center gap-1.5 ${
+                emailEnabled ? "text-emerald-700" : "text-slate-500"
+              }`}
+            >
+              {emailEnabled ? (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Disparo ativo ({scheduledTime})</span>
+                </>
+              ) : (
+                <span>Agendamento inativo</span>
+              )}
+            </span>
+
             <button
               onClick={fetchEmailSettings}
               disabled={isLoadingEmail}
-              className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition-all"
-              title="Recarregar dados"
+              className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              title="Recarregar configurações"
             >
-              <RefreshCw className={`w-4 h-4 ${isLoadingEmail ? 'animate-spin' : ''}`} />
+              <RefreshCw
+                className={`w-4 h-4 ${isLoadingEmail ? "animate-spin" : ""}`}
+              />
             </button>
-            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-bold font-mono tracking-wide uppercase ${
-              emailEnabled 
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
-                : 'bg-slate-100 text-slate-500 border border-slate-200/50'
-            }`}>
-              <span className={`w-1.5 h-1.5 rounded-full ${emailEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
-              {emailEnabled ? "Relatório Ativo" : "Desativado"}
-            </span>
           </div>
         </div>
 
         {emailStatusMsg && (
-          <div className={`p-4 rounded-2xl border text-xs flex items-start gap-3 shadow-3xs ${
-            emailStatusMsg.type === 'success' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' :
-            emailStatusMsg.type === 'error' ? 'bg-rose-50 border-rose-100 text-rose-800' :
-            'bg-indigo-50 border-indigo-100 text-indigo-800'
-          }`}>
-            <div className="shrink-0 font-bold">
-              {emailStatusMsg.type === 'success' ? '✓' : emailStatusMsg.type === 'error' ? '⚠' : 'ℹ'}
-            </div>
-            <div className="font-semibold leading-normal">{emailStatusMsg.text}</div>
+          <div
+            className={`px-4 py-3 rounded-xl border text-xs font-medium ${
+              emailStatusMsg.type === "success"
+                ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+                : emailStatusMsg.type === "error"
+                  ? "bg-rose-50 border-rose-200 text-rose-800"
+                  : "bg-indigo-50 border-indigo-200 text-indigo-800"
+            }`}
+          >
+            {emailStatusMsg.text}
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* Email Settings Controller (7 cols) */}
-          <form onSubmit={handleSaveEmailSettings} className="bg-white border border-slate-100 rounded-2xl p-6 shadow-2xs lg:col-span-7 space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3.5 bg-slate-50/50 border border-slate-100 rounded-2xl">
-                <div>
-                  <h4 className="text-xs font-bold text-slate-900">Ativar Disparo Automático Diário</h4>
-                  <p className="text-[10px] text-slate-500">O servidor executará a varredura e enviará o e-mail no horário programado</p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={emailEnabled}
-                    onChange={(e) => setEmailEnabled(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+          <form
+            onSubmit={handleSaveEmailSettings}
+            className="lg:col-span-7 space-y-5"
+          >
+            <div className="flex items-center justify-between py-2 border-b border-slate-100">
+              <div>
+                <h4 className="text-xs font-semibold text-slate-900">
+                  Habilitar envio diário automático
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Executa a consolidação e envia o resumo no horário definido
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={emailEnabled}
+                  onChange={(e) => setEmailEnabled(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-10 h-5.5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-4.5 after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4.5 after:w-4.5 after:transition-transform peer-checked:bg-indigo-600" />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  E-mail destinatário
                 </label>
+                <input
+                  type="email"
+                  required
+                  value={recipientEmail}
+                  onChange={(e) => setRecipientEmail(e.target.value)}
+                  placeholder="financeiro@empresa.com"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
+                />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">E-mail Destinatário</label>
-                  <input
-                    type="email"
-                    required
-                    value={recipientEmail}
-                    onChange={(e) => setRecipientEmail(e.target.value)}
-                    placeholder="exemplo@empresa.com"
-                    className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">Horário de Envio</label>
-                  <input
-                    type="time"
-                    required
-                    value={scheduledTime}
-                    onChange={(e) => setScheduledTime(e.target.value)}
-                    className="w-full h-11 px-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
-                  />
-                </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700 mb-1.5">
+                  Horário programado
+                </label>
+                <input
+                  type="time"
+                  required
+                  value={scheduledTime}
+                  onChange={(e) => setScheduledTime(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-600 transition-colors"
+                />
               </div>
             </div>
 
-            {/* Collapsible SMTP Server Settings */}
-            <div className="border-t border-slate-100 pt-4">
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={() => setShowSmtpConfig(!showSmtpConfig)}
-                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 focus:outline-none"
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-800 cursor-pointer"
               >
-                <span>{showSmtpConfig ? "▲ Ocultar" : "▼ Exibir"} Configurações do Servidor SMTP (E-mails Reais)</span>
+                {showSmtpConfig
+                  ? "Ocultar credenciais SMTP"
+                  : "Configurar servidor SMTP (opcional)"}
               </button>
 
               {showSmtpConfig && (
-                <div className="mt-4 p-4 bg-slate-50 border border-slate-150 rounded-2xl space-y-4 animate-fadeIn">
-                  <p className="text-[10px] text-slate-500 leading-relaxed">
-                    Se você deixar o SMTP em branco, o sistema funcionará no <strong>Modo Simulado</strong>, gerando o relatório na íntegra e gravando o envio com sucesso nos logs do banco de dados (ideal para testes). Forneça as credenciais abaixo para habilitar o envio real.
+                <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    Sem credenciais SMTP preenchidas, o disparo opera em modo
+                    simulado registrando o relatório completo no histórico.
                   </p>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4">
-                    <div className="md:col-span-8">
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Host SMTP</label>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+                    <div className="sm:col-span-8">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Host SMTP
+                      </label>
                       <input
                         type="text"
-                        placeholder="smtp.gmail.com ou smtp.sendgrid.net"
+                        placeholder="smtp.gmail.com"
                         value={smtpHost}
                         onChange={(e) => setSmtpHost(e.target.value)}
-                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                       />
                     </div>
 
-                    <div className="md:col-span-4">
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Porta SMTP</label>
+                    <div className="sm:col-span-4">
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Porta
+                      </label>
                       <input
                         type="number"
                         placeholder="587"
                         value={smtpPort}
                         onChange={(e) => setSmtpPort(Number(e.target.value))}
-                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:border-indigo-600"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Usuário / Remetente</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Usuário / Remetente
+                      </label>
                       <input
                         type="text"
-                        placeholder="seu-email@gmail.com"
+                        placeholder="conta@gmail.com"
                         value={smtpUser}
                         onChange={(e) => setSmtpUser(e.target.value)}
-                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[10px] font-bold text-slate-600 uppercase tracking-wider mb-1">Senha SMTP / Token</label>
+                      <label className="block text-xs font-medium text-slate-700 mb-1">
+                        Senha de Aplicativo (16 caracteres)
+                      </label>
                       <input
                         type="password"
                         placeholder="••••••••••••••••"
                         value={smtpPass}
                         onChange={(e) => setSmtpPass(e.target.value)}
-                        className="w-full h-9 px-3 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500"
+                        className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:bg-white focus:outline-hidden focus:border-indigo-600"
                       />
-                      <span className="text-[9px] text-indigo-600 font-bold block mt-1">
-                        * Não digite sua senha de login normal. Use a Senha de App de 16 letras (veja o guia passo a passo ao lado).
-                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
                     <input
                       type="checkbox"
-                      id="smtpSecure"
                       checked={smtpSecure}
                       onChange={(e) => setSmtpSecure(e.target.checked)}
                       className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500"
                     />
-                    <label htmlFor="smtpSecure" className="text-[10px] text-slate-600 font-medium">Usar conexão segura SSL/TLS (Normalmente para porta 465)</label>
-                  </div>
+                    <span className="text-xs text-slate-600">
+                      Conexão segura SSL/TLS (porta 465)
+                    </span>
+                  </label>
                 </div>
               )}
             </div>
 
-            {/* Actions Panel */}
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 pt-5">
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100">
               <button
                 type="button"
                 disabled={isTestingEmail || isLoadingEmail}
                 onClick={handleTestEmailSend}
-                className="h-11 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-3xs cursor-pointer active:scale-98 disabled:opacity-50 transition-all shrink-0"
+                className="px-4 py-2.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs rounded-xl inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
               >
-                <Send className={`w-4 h-4 ${isTestingEmail ? 'animate-pulse' : ''}`} />
-                {isTestingEmail ? "Enviando..." : "Disparar Teste Agora"}
+                <Send className="w-3.5 h-3.5" />
+                <span>
+                  {isTestingEmail ? "Enviando..." : "Disparar Teste Agora"}
+                </span>
               </button>
 
               <button
                 type="submit"
                 disabled={isSavingEmail || isLoadingEmail}
-                className="h-11 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 shadow-2xs hover:shadow-md cursor-pointer active:scale-98 disabled:opacity-50 transition-all shrink-0"
+                className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs rounded-xl cursor-pointer disabled:opacity-50 transition-colors whitespace-nowrap"
               >
                 {isSavingEmail ? "Salvando..." : "Salvar Configuração"}
               </button>
             </div>
           </form>
 
-          {/* Email dispatch logs & info (5 cols) */}
-          <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-2xs lg:col-span-5 flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 lg:border-l lg:border-slate-100 lg:pl-6 flex flex-col justify-between space-y-5">
             <div>
-              <h4 className="text-xs font-bold text-slate-950 flex items-center gap-1.5 mb-1.5">
-                <Clock className="w-4 h-4 text-slate-500" />
-                Histórico de Envio e Logs do Sistema
+              <h4 className="text-xs font-semibold text-slate-900 mb-1">
+                Histórico de Disparos
               </h4>
-              <p className="text-[10px] text-slate-500">Últimos disparos de e-mail monitorados pelo sistema de automação corporativo</p>
-            </div>
+              <p className="text-xs text-slate-500 mb-3">
+                Últimas execuções registradas pelo agendador
+              </p>
 
-            <div className="flex-1 max-h-[250px] overflow-y-auto space-y-2.5 pr-1 scrollbar-thin">
-              {emailLogs.length > 0 ? (
-                emailLogs.map((log, idx) => {
-                  const formattedLogDate = new Date(log.timestamp).toLocaleString("pt-BR", {
-                    day: "2-digit",
-                    month: "2-digit",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    second: "2-digit"
-                  });
-                  return (
-                    <div key={idx} className="p-3 bg-slate-50/50 border border-slate-100 rounded-xl space-y-1.5 text-[11px] leading-relaxed">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-[9.5px] text-slate-400 font-medium">{formattedLogDate}</span>
-                        <span className={`inline-block px-1.5 py-0.5 rounded-full text-[8.5px] font-bold font-mono uppercase tracking-wider ${
-                          log.status === "success" ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
-                          log.status === "simulated" ? "bg-amber-50 text-amber-700 border border-amber-100" :
-                          "bg-rose-50 text-rose-700 border border-rose-100"
-                        }`}>
-                          {log.status === "success" ? "Real" : log.status === "simulated" ? "Simulado" : "Erro"}
-                        </span>
+              <div className="divide-y divide-slate-100 max-h-48 overflow-y-auto">
+                {emailLogs.length > 0 ? (
+                  emailLogs.map((log, idx) => {
+                    const formattedLogDate = new Date(
+                      log.timestamp
+                    ).toLocaleString("pt-BR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      hour: "2-digit",
+                      minute: "2-digit"
+                    });
+                    return (
+                      <div key={idx} className="py-2.5 text-xs space-y-0.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono tabular-nums text-slate-400">
+                            {formattedLogDate}
+                          </span>
+                          <span
+                            className={`font-medium ${
+                              log.status === "success"
+                                ? "text-emerald-700"
+                                : log.status === "simulated"
+                                  ? "text-amber-700"
+                                  : "text-rose-700"
+                            }`}
+                          >
+                            {log.status === "success"
+                              ? "Enviado"
+                              : log.status === "simulated"
+                                ? "Simulado"
+                                : "Falha"}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 break-words">
+                          {log.message}
+                        </p>
                       </div>
-                      <p className="text-slate-700 font-medium break-words">{log.message}</p>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-center py-10 text-slate-400 italic text-[11px]">
-                  Nenhum registro de e-mail disparado encontrado.
-                </div>
-              )}
+                    );
+                  })
+                ) : (
+                  <p className="py-6 text-xs text-slate-400">
+                    Nenhum disparo registrado até o momento.
+                  </p>
+                )}
+              </div>
             </div>
 
-            {/* Quick guide */}
-            <div className="p-4 bg-indigo-50/60 border border-indigo-150 rounded-2xl text-xs text-indigo-950 space-y-3">
-              <div>
-                <span className="font-bold text-sm block mb-1 flex items-center gap-1.5">
-                  🔑 Guia Passo a Passo: Gerar Senha de App no Gmail
-                </span>
-                <p className="text-[11px] leading-normal opacity-90 text-indigo-900">
-                  O Google exige uma <strong>Senha de App (16 caracteres)</strong> exclusiva e segura para que aplicativos de terceiros acessem o SMTP. Siga os passos abaixo na sua conta Google para criar uma:
-                </p>
-              </div>
-
-              <ol className="list-decimal list-inside space-y-1.5 text-[11px] pl-1 font-medium text-indigo-900/90">
-                <li>
-                  Acesse sua <a href="https://myaccount.google.com" target="_blank" rel="noopener noreferrer" className="underline font-bold text-indigo-700 hover:text-indigo-900">Conta Google</a>.
-                </li>
-                <li>
-                  No painel lateral esquerdo, clique em <strong className="text-indigo-950">Segurança</strong>.
-                </li>
-                <li>
-                  Certifique-se de que a <strong className="text-indigo-950">Verificação em duas etapas</strong> esteja <span className="text-emerald-700 font-bold">Ativada</span>. Se não estiver, ative-a primeiro.
-                </li>
-                <li>
-                  Na barra de pesquisa no topo da página de Conta Google, digite <code className="bg-white/70 px-1 py-0.5 rounded font-mono text-xs">Senhas de app</code> e selecione o resultado correspondente.
-                </li>
-                <li>
-                  Insira um nome identificador para o aplicativo (por exemplo: <code className="bg-white/70 px-1 py-0.5 rounded font-mono text-xs">ShopControl</code>) e clique em <strong className="text-indigo-950">Criar</strong>.
-                </li>
-                <li>
-                  Uma janela popup abrirá mostrando um código de <strong className="text-amber-800 font-extrabold bg-amber-50 px-1.5 py-0.5 rounded border border-amber-100">16 letras amarelas</strong>.
-                </li>
-                <li>
-                  <strong>Copie essas 16 letras</strong> (sem os espaços) e cole diretamente no campo <strong className="text-indigo-950">"Senha SMTP / Token"</strong> ao lado!
-                </li>
-              </ol>
-
-              <div className="pt-2 border-t border-indigo-100/50 flex flex-wrap gap-x-4 gap-y-1 text-[10.5px] font-mono font-bold text-indigo-800">
-                <span>Servidor: <code className="bg-white/50 px-1 rounded">smtp.gmail.com</code></span>
-                <span>Porta: <code className="bg-white/50 px-1 rounded">587</code></span>
-              </div>
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200/70 text-xs text-slate-600 space-y-1.5">
+              <p className="font-semibold text-slate-900">
+                Autenticação Gmail SMTP
+              </p>
+              <p className="leading-relaxed">
+                Para envio via Gmail (<code className="font-mono">smtp.gmail.com:587</code>), ative a verificação em duas etapas na sua Conta Google, gere uma <strong>Senha de App</strong> de 16 caracteres e informe-a no campo de senha SMTP.
+              </p>
             </div>
           </div>
-
         </div>
       </div>
-
     </div>
   );
 }

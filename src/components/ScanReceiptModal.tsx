@@ -1,5 +1,14 @@
 import React, { useState, useRef } from "react";
-import { Camera, UploadCloud, X, ArrowRight, Loader2, Sparkles, Check, AlertCircle } from "lucide-react";
+import {
+  UploadCloud,
+  X,
+  ArrowRight,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  ScanLine,
+  FileText
+} from "lucide-react";
 import { ShoppingItem, ShoppingList, CategoryType } from "../types";
 
 interface ScanReceiptModalProps {
@@ -8,10 +17,15 @@ interface ScanReceiptModalProps {
   onReceiptProcessed: (newList: ShoppingList) => void;
 }
 
-export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }: ScanReceiptModalProps) {
+export default function ScanReceiptModal({
+  isOpen,
+  onClose,
+  onReceiptProcessed
+}: ScanReceiptModalProps) {
   const [dragActive, setDragActive] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imageLoadError, setImageLoadError] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
   const [scanStep, setScanStep] = useState("");
   const [scanError, setScanError] = useState<string | null>(null);
@@ -21,31 +35,44 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
     totalAmount: number;
     items: { name: string; price: number; quantity: number }[];
     simulation: boolean;
+    fornecedor?: string;
+    parcelas?: number;
+    solicitante?: string;
+    setor?: string;
+    centroCusto?: string;
+    finalCartao?: string;
+    entrega?: string;
+    destino?: string;
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
-  // Preset mock receipts for extremely convenient simulation testing
   const presets = [
     {
-      name: "Cupom Supermercado 🛒",
-      preview: "Pão, Leite, Queijo, Frutas e Sabão... (Total: R$ 145,80)",
-      description: "Carrega uma simulação de compra semanal de produtos básicos de mercearia.",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDaPTTs9xxbv7RAM6mCoilWZxthhJNqD6td8i0pvaM6KOD_1r01tEMfuXb1_LtSyqPR0N1QVvap92wpZSa_7QBu2dxSI2bKA-y7V6SW7sAxeljgDIUuKEj6gk8LLy_NRCCwr09oSzrzUKz8SkE-T9ya3VTM9qa1WD-l4g0RRp2p3yaS1xIZQRoPGi0mRA36ndrKChehu5DOYEDMuKjgq4GLI6z1ETqjLI-8hLKe5Mcx7WZSaGGZlRxpg00qGm_mUanTqPJjdDk5tyI"
+      name: "Suprimentos Operacionais",
+      totalLabel: "R$ 145,80",
+      description:
+        "Simulação de cupom de insumos básicos e material de copa corporativa.",
+      imgUrl:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDaPTTs9xxbv7RAM6mCoilWZxthhJNqD6td8i0pvaM6KOD_1r01tEMfuXb1_LtSyqPR0N1QVvap92wpZSa_7QBu2dxSI2bKA-y7V6SW7sAxeljgDIUuKEj6gk8LLy_NRCCwr09oSzrzUKz8SkE-T9ya3VTM9qa1WD-l4g0RRp2p3yaS1xIZQRoPGi0mRA36ndrKChehu5DOYEDMuKjgq4GLI6z1ETqjLI-8hLKe5Mcx7WZSaGGZlRxpg00qGm_mUanTqPJjdDk5tyI"
     },
     {
-      name: "Nota Depósito ConstruJá 🛠️",
-      preview: "Tinta Acrílica, Rolos, Massa Corrida... (Total: R$ 349,00)",
-      description: "Carrega uma simulação de lista de materiais de pintura doméstica.",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDaPTTs9xxbv7RAM6mCoilWZxthhJNqD6td8i0pvaM6KOD_1r01tEMfuXb1_LtSyqPR0N1QVvap92wpZSa_7QBu2dxSI2bKA-y7V6SW7sAxeljgDIUuKEj6gk8LLy_NRCCwr09oSzrzUKz8SkE-T9ya3VTM9qa1WD-l4g0RRp2p3yaS1xIZQRoPGi0mRA36ndrKChehu5DOYEDMuKjgq4GLI6z1ETqjLI-8hLKe5Mcx7WZSaGGZlRxpg00qGm_mUanTqPJjdDk5tyI"
+      name: "Manutenção Predial",
+      totalLabel: "R$ 349,00",
+      description:
+        "Simulação de nota fiscal de materiais para reparos e infraestrutura.",
+      imgUrl:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDaPTTs9xxbv7RAM6mCoilWZxthhJNqD6td8i0pvaM6KOD_1r01tEMfuXb1_LtSyqPR0N1QVvap92wpZSa_7QBu2dxSI2bKA-y7V6SW7sAxeljgDIUuKEj6gk8LLy_NRCCwr09oSzrzUKz8SkE-T9ya3VTM9qa1WD-l4g0RRp2p3yaS1xIZQRoPGi0mRA36ndrKChehu5DOYEDMuKjgq4GLI6z1ETqjLI-8hLKe5Mcx7WZSaGGZlRxpg00qGm_mUanTqPJjdDk5tyI"
     },
     {
-      name: "Recibo Restaurante Bela 🍕",
-      preview: "Pizza Grande, Suco Natural, Refris... (Total: R$ 98,00)",
-      description: "Carrega uma simulação de refeição em pizzaria familiar.",
-      imgUrl: "https://lh3.googleusercontent.com/aida-public/AB6AXuDaPTTs9xxbv7RAM6mCoilWZxthhJNqD6td8i0pvaM6KOD_1r01tEMfuXb1_LtSyqPR0N1QVvap92wpZSa_7QBu2dxSI2bKA-y7V6SW7sAxeljgDIUuKEj6gk8LLy_NRCCwr09oSzrzUKz8SkE-T9ya3VTM9qa1WD-l4g0RRp2p3yaS1xIZQRoPGi0mRA36ndrKChehu5DOYEDMuKjgq4GLI6z1ETqjLI-8hLKe5Mcx7WZSaGGZlRxpg00qGm_mUanTqPJjdDk5tyI"
+      name: "Despesa de Representação",
+      totalLabel: "R$ 98,00",
+      description:
+        "Simulação de comprovante de alimentação corporativa em viagem.",
+      imgUrl:
+        "https://lh3.googleusercontent.com/aida-public/AB6AXuDaPTTs9xxbv7RAM6mCoilWZxthhJNqD6td8i0pvaM6KOD_1r01tEMfuXb1_LtSyqPR0N1QVvap92wpZSa_7QBu2dxSI2bKA-y7V6SW7sAxeljgDIUuKEj6gk8LLy_NRCCwr09oSzrzUKz8SkE-T9ya3VTM9qa1WD-l4g0RRp2p3yaS1xIZQRoPGi0mRA36ndrKChehu5DOYEDMuKjgq4GLI6z1ETqjLI-8hLKe5Mcx7WZSaGGZlRxpg00qGm_mUanTqPJjdDk5tyI"
     }
   ];
 
@@ -61,6 +88,7 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
 
   const processImageFile = (file: File) => {
     setSelectedFile(file);
+    setImageLoadError(false);
     const reader = new FileReader();
     reader.onload = (e) => {
       setSelectedImage(e.target?.result as string);
@@ -79,7 +107,9 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
       if (file.type.startsWith("image/")) {
         processImageFile(file);
       } else {
-        setScanError("Apenas arquivos de imagem são aceitos (.png, .jpg, .jpeg, .webp)");
+        setScanError(
+          "Formato inválido. Envie uma imagem PNG, JPG, JPEG ou WEBP."
+        );
       }
     }
   };
@@ -90,19 +120,16 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
     }
   };
 
-  // Run receipt analytical parse
   const runReceiptScan = async (base64Str: string, isPreset = false) => {
     setIsScanning(true);
     setScanError(null);
     setParsedResult(null);
 
-    // Loop steps to show user beautiful realistic status progression
     const steps = [
-      "Iniciando decodificação de imagem...",
-      "Enviando cupom para processamento seguro...",
-      "Identificando cabeçalho e razão social...",
-      "Extraindo itens de compra, preços e quantidades...",
-      "Categorizando despesas finais..."
+      "Decodificando imagem da nota fiscal...",
+      "Identificando razão social e estabelecimento...",
+      "Extraindo itens, quantidades e valores unitários...",
+      "Classificando conta contábil correspondente..."
     ];
 
     let currentStepIdx = 0;
@@ -123,7 +150,9 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
         },
         body: JSON.stringify({
           image: base64Str,
-          mimeType: isPreset ? "image/jpeg" : (selectedFile?.type || "image/jpeg")
+          mimeType: isPreset
+            ? "image/jpeg"
+            : selectedFile?.type || "image/jpeg"
         })
       });
 
@@ -131,14 +160,16 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Ocorreu um erro no servidor de escaneamento.");
+        throw new Error(
+          errorData.error || "Falha ao processar leitura da nota fiscal."
+        );
       }
 
       const result = await response.json();
       setParsedResult(result);
     } catch (err: any) {
       clearInterval(interval);
-      setScanError(err.message || "Erro desconhecido ao ler o cupom.");
+      setScanError(err.message || "Erro inesperado ao analisar o documento.");
     } finally {
       setIsScanning(false);
     }
@@ -150,37 +181,38 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
     }
   };
 
-  const handleSelectPreset = (preset: typeof presets[0]) => {
+  const handleSelectPreset = (preset: (typeof presets)[0]) => {
     setSelectedImage(preset.imgUrl);
+    setImageLoadError(false);
     setSelectedFile(null);
     setScanError(null);
-    // Presets run with safe mock values seamlessly
     runReceiptScan(preset.imgUrl, true);
   };
 
   const handleSaveResult = () => {
     if (!parsedResult) return;
 
-    // Convert items to proper format
     const shoppingItems: ShoppingItem[] = parsedResult.items.map((it, idx) => ({
       id: `scanned-item-${Date.now()}-${idx}`,
       name: it.name,
       price: it.price,
       quantity: it.quantity,
-      checked: true, // Marked as purchase items already bought
+      checked: true
     }));
 
-    const dateFormatted = new Date().toLocaleString("pt-BR", {
-      day: "numeric",
-      month: "short",
-      hour: "2-digit",
-      minute: "2-digit"
-    }).replace(".", "");
+    const dateFormatted = new Date()
+      .toLocaleString("pt-BR", {
+        day: "numeric",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      })
+      .replace(".", "");
 
     const newShoppingList: ShoppingList = {
       id: `scanned-list-${Date.now()}`,
       name: parsedResult.storeName,
-      budget: parsedResult.totalAmount, // Perfect alignment
+      budget: parsedResult.totalAmount,
       spent: parsedResult.totalAmount,
       date: dateFormatted,
       category: parsedResult.category,
@@ -188,13 +220,14 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
       items: shoppingItems,
       fornecedor: parsedResult.fornecedor || parsedResult.storeName,
       parcelas: parsedResult.parcelas || 1,
-      solicitante: parsedResult.solicitante || "Alex",
+      solicitante: parsedResult.solicitante || "User",
       setor: parsedResult.setor || "Tecnologia",
       centroCusto: parsedResult.centroCusto || "CC-TI-42",
       finalCartao: parsedResult.finalCartao || "9876",
-      entrega: parsedResult.entrega || "Imediata",
+      entrega:
+        parsedResult.entrega || new Date().toISOString().split("T")[0],
       destino: parsedResult.destino || "Almoxarifado Central",
-      dataLancamento: new Date().toISOString().split('T')[0],
+      dataLancamento: new Date().toISOString().split("T")[0]
     };
 
     onReceiptProcessed(newShoppingList);
@@ -205,6 +238,7 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
   const resetState = () => {
     setSelectedImage(null);
     setSelectedFile(null);
+    setImageLoadError(false);
     setIsScanning(false);
     setScanError(null);
     setParsedResult(null);
@@ -212,19 +246,20 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-surface-container-lowest rounded-2xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
+      <div className="relative w-full max-w-2xl max-h-[90vh] flex flex-col bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between p-lg border-b border-surface-container font-headline">
-          <div className="flex items-center gap-xs">
-            <div className="p-2 rounded-xl bg-brand-secondary/15 text-brand-secondary animate-pulse">
-              <Sparkles className="w-5 h-5" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200/80">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <ScanLine className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-headline text-lg font-bold">Escanear Cupom Fiscal por IA</h3>
-              <p className="font-sans text-xs text-on-surface-variant">
-                Carregue ou simule a leitura de notas fiscais com reconhecimento automático
+              <h3 className="font-headline text-base font-bold text-slate-900">
+                Importar Cupom ou Nota Fiscal (OCR)
+              </h3>
+              <p className="text-xs text-slate-500">
+                Extração automática de estabelecimento, itens e valores
               </p>
             </div>
           </div>
@@ -233,23 +268,23 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
               onClose();
               resetState();
             }}
-            className="p-1.5 hover:bg-surface-container rounded-full text-on-surface-variant hover:text-on-surface transition-colors"
+            className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="p-lg flex-1 overflow-y-auto space-y-lg">
+        {/* Content */}
+        <div className="p-6 flex-1 overflow-y-auto space-y-6">
           {scanError && (
-            <div className="p-md rounded-xl bg-red-50 border border-red-200 flex items-start gap-md text-red-800 text-sm">
-              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-500" />
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 flex items-start gap-3 text-rose-800 text-xs">
+              <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
               <div>
-                <p className="font-bold">Ocorreu um erro ao escanear</p>
-                <p className="font-sans text-xs">{scanError}</p>
+                <p className="font-semibold">Falha na leitura do documento</p>
+                <p className="mt-0.5">{scanError}</p>
                 <button
                   onClick={resetState}
-                  className="mt-2 font-bold underline hover:no-underline text-xs"
+                  className="mt-2 font-semibold underline hover:no-underline cursor-pointer"
                 >
                   Tentar novamente
                 </button>
@@ -257,21 +292,19 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
             </div>
           )}
 
-          {/* Core State Selector */}
           {!selectedImage && !parsedResult && !isScanning && (
-            <div className="space-y-lg">
-              {/* Drag-and-drop / Upload Area */}
+            <div className="space-y-6">
               <div
                 onDragEnter={handleDrag}
                 onDragOver={handleDrag}
                 onDragLeave={handleDrag}
                 onDrop={handleDrop}
-                className={`relative border-2 border-dashed rounded-2xl p-xl flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-150 ${
-                  dragActive
-                    ? "border-brand-secondary bg-brand-secondary/10"
-                    : "border-outline-variant hover:border-brand-secondary bg-surface-container-low"
-                }`}
                 onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center cursor-pointer transition-colors duration-150 ${
+                  dragActive
+                    ? "border-indigo-600 bg-indigo-50/50"
+                    : "border-slate-200 hover:border-indigo-400 bg-slate-50/60"
+                }`}
               >
                 <input
                   type="file"
@@ -280,46 +313,53 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
                   accept="image/*"
                   onChange={handleFileChange}
                 />
-                <div className="w-14 h-14 rounded-full bg-surface-container flex items-center justify-center mb-md shadow-sm">
-                  <UploadCloud className="w-7 h-7 text-on-surface-variant" />
+                <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 flex items-center justify-center mb-3">
+                  <UploadCloud className="w-5 h-5 text-slate-600" />
                 </div>
-                <h4 className="font-headline font-bold text-sm">Arraste a nota aqui ou selecione arquivos</h4>
-                <p className="font-sans text-xs text-on-surface-variant mt-1">
-                  Suporta formatos PNG, JPG, JPEG ou WEBP (até 10MB)
+                <h4 className="font-headline font-semibold text-sm text-slate-900">
+                  Arraste a imagem da nota ou clique para selecionar
+                </h4>
+                <p className="text-xs text-slate-500 mt-1">
+                  Formatos aceitos: PNG, JPG, JPEG ou WEBP (até 10 MB)
                 </p>
-                <button className="mt-lg px-lg py-2.5 bg-brand-primary text-white text-xs font-bold rounded-xl hover:bg-brand-primary/80 transition-colors">
-                  Procurar Arquivo
-                </button>
+                <span className="mt-4 px-4 py-2 bg-indigo-600 text-white text-xs font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                  Selecionar Arquivo
+                </span>
               </div>
 
-              {/* Simulation Segment */}
-              <div className="space-y-md">
-                <div className="flex items-center gap-xs">
-                  <div className="h-px bg-surface-container-high flex-1"></div>
-                  <span className="font-sans text-[10px] uppercase tracking-wider text-on-surface-variant/80 font-bold px-sm bg-surface-container-lowest">
-                    OU EXPERIMENTE NA PRÁTICA (RECOMENDADO)
+              <div className="space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="h-px bg-slate-200 flex-1" />
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Exemplos para simulação imediata
                   </span>
-                  <div className="h-px bg-surface-container-high flex-1"></div>
+                  <div className="h-px bg-slate-200 flex-1" />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-md">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {presets.map((preset, idx) => (
                     <button
                       key={idx}
+                      type="button"
                       onClick={() => handleSelectPreset(preset)}
-                      className="p-md text-left rounded-2xl bg-surface-container-low border border-surface-container hover:border-brand-secondary hover:bg-surface-container-lowest hover:shadow-xs transition-all flex flex-col justify-between group active:scale-98 duration-100 h-36"
+                      className="p-4 text-left rounded-xl bg-slate-50/70 border border-slate-200/80 hover:border-indigo-400 hover:bg-white transition-colors flex flex-col justify-between cursor-pointer"
                     >
                       <div>
-                        <h5 className="font-headline font-bold text-xs group-hover:text-brand-secondary text-on-surface leading-tight">
+                        <h5 className="font-headline font-semibold text-xs text-slate-900">
                           {preset.name}
                         </h5>
-                        <p className="font-sans text-[11px] text-on-surface-variant leading-relaxed mt-2 line-clamp-3">
+                        <p className="text-[11px] text-slate-500 leading-relaxed mt-1.5">
                           {preset.description}
                         </p>
                       </div>
-                      <span className="font-mono text-[9px] text-brand-secondary font-bold self-end bg-brand-secondary/15 px-1.5 py-0.5 rounded">
-                        Iniciar Teste
-                      </span>
+                      <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
+                        <span className="font-mono tabular-nums font-semibold text-slate-700">
+                          {preset.totalLabel}
+                        </span>
+                        <span className="text-indigo-600 font-semibold">
+                          Testar
+                        </span>
+                      </div>
                     </button>
                   ))}
                 </div>
@@ -327,100 +367,110 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
             </div>
           )}
 
-          {/* Active scanning loader view with scanning lasers */}
           {isScanning && (
-            <div className="py-xl flex flex-col items-center justify-center text-center space-y-md">
-              <div className="relative w-48 h-56 border border-surface-container rounded-xl overflow-hidden shadow-md flex items-center justify-center bg-surface-container-low">
-                {selectedImage && (
+            <div className="py-10 flex flex-col items-center justify-center text-center space-y-4">
+              <div className="relative w-44 h-52 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center bg-slate-50">
+                {selectedImage && !imageLoadError ? (
                   <img
                     src={selectedImage}
                     referrerPolicy="no-referrer"
-                    alt="Processando cupom"
+                    alt="Documento em análise"
+                    onError={() => setImageLoadError(true)}
                     className="w-full h-full object-cover opacity-60"
                   />
+                ) : (
+                  <FileText className="w-10 h-10 text-slate-300" />
                 )}
-                {/* Horizontal scanner beam animation */}
-                <div className="absolute inset-x-0 h-1 bg-gradient-to-r from-transparent via-brand-secondary to-transparent shadow-[0_0_20px_#6cf8bb] top-0 animate-[bounce_2s_infinite]"></div>
               </div>
-              <div className="flex items-center gap-sm text-brand-secondary font-headline font-bold text-sm">
-                <Loader2 className="w-4.5 h-4.5 animate-spin" />
-                <span>Analisando Nota com Inteligência Artificial</span>
+              <div className="flex items-center gap-2 text-indigo-600 font-headline font-semibold text-sm">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Processando leitura da nota fiscal</span>
               </div>
-              <p className="font-sans text-xs text-on-surface-variant italic font-medium px-md max-w-sm h-4">
-                {scanStep}
-              </p>
+              <p className="text-xs text-slate-500 max-w-sm">{scanStep}</p>
             </div>
           )}
 
-          {/* Results Display Grid */}
           {parsedResult && !isScanning && (
-            <div className="space-y-lg">
-              <div className="p-lg rounded-2xl bg-brand-secondary/10 border border-brand-secondary/30 flex items-start gap-md">
-                <div className="p-2 rounded-xl bg-brand-secondary/20 text-brand-on-secondary-container mt-0.5">
-                  <Check className="w-5 h-5" />
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-headline font-bold text-sm text-brand-on-secondary-container">
-                    Informações Extraídas com Sucesso!
+            <div className="space-y-5">
+              <div className="p-4 rounded-xl bg-emerald-50/80 border border-emerald-200 flex items-start gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <h4 className="font-semibold text-xs text-emerald-950">
+                    Dados extraídos com sucesso
                   </h4>
-                  <p className="font-sans text-xs text-on-surface-variant mt-1">
-                    {parsedResult.simulation 
-                      ? "Escaneamento simulado: geramos uma resposta estruturada de alto padrão para demonstração."
-                      : "Escaneamento por IA real sobre a nota fiscal processada com sucesso."}
+                  <p className="text-xs text-emerald-800 mt-0.5">
+                    {parsedResult.simulation
+                      ? "Leitura demonstrativa concluída. Confira os itens antes de salvar."
+                      : "Os itens e valores da nota fiscal foram identificados."}
                   </p>
                 </div>
               </div>
 
-              {/* Parsed summary properties */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-md bg-surface-container-low p-md rounded-2xl">
-                <div>
-                  <span className="font-sans text-[10px] text-on-surface-variant block uppercase font-extrabold tracking-wider">
+              <div className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-slate-200 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
+                <div className="pb-2 sm:pb-0 sm:pr-4">
+                  <span className="text-[11px] text-slate-500 block">
                     Estabelecimento
                   </span>
-                  <span className="font-headline font-bold text-sm text-on-surface">
+                  <span className="font-semibold text-xs text-slate-900 mt-0.5 block">
                     {parsedResult.storeName}
                   </span>
                 </div>
-                <div>
-                  <span className="font-sans text-[10px] text-on-surface-variant block uppercase font-extrabold tracking-wider">
-                    Categoria Mapeada
+                <div className="py-2 sm:py-0 sm:px-4">
+                  <span className="text-[11px] text-slate-500 block">
+                    Conta Sugerida
                   </span>
-                  <span className="font-sans text-xs font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mt-0.5">
+                  <span className="text-xs font-medium text-slate-800 mt-0.5 block truncate">
                     {parsedResult.category}
                   </span>
                 </div>
-                <div>
-                  <span className="font-sans text-[10px] text-on-surface-variant block uppercase font-extrabold tracking-wider">
+                <div className="pt-2 sm:pt-0 sm:pl-4">
+                  <span className="text-[11px] text-slate-500 block">
                     Valor Total
                   </span>
-                  <span className="font-sans text-sm font-bold text-on-surface">
-                    R$ {parsedResult.totalAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                  <span className="font-mono tabular-nums text-sm font-bold text-slate-900 mt-0.5 block">
+                    R${" "}
+                    {parsedResult.totalAmount.toLocaleString("pt-BR", {
+                      minimumFractionDigits: 2
+                    })}
                   </span>
                 </div>
               </div>
 
-              {/* Items tabular view */}
-              <div className="space-y-sm">
-                <h5 className="font-headline font-bold text-xs text-on-surface">
-                  Itens Detectados ({parsedResult.items.length})
+              <div className="space-y-2">
+                <h5 className="font-semibold text-xs text-slate-900">
+                  Itens Identificados ({parsedResult.items.length})
                 </h5>
-                <div className="border border-surface-container rounded-2xl overflow-hidden font-sans text-xs">
+                <div className="border border-slate-200/80 rounded-xl overflow-hidden text-xs">
                   <table className="w-full border-collapse">
                     <thead>
-                      <tr className="bg-surface-container-low text-left font-bold text-on-surface-variant border-b border-surface-container">
-                        <th className="p-sm pl-md">Item</th>
-                        <th className="p-sm text-center">Quant.</th>
-                        <th className="p-sm text-right">Unitário</th>
-                        <th className="p-sm text-right pr-md">Subtotal</th>
+                      <tr className="bg-slate-50 text-left font-semibold text-slate-500 border-b border-slate-200/80">
+                        <th className="py-2.5 px-4">Item</th>
+                        <th className="py-2.5 px-3 text-center">Qtd.</th>
+                        <th className="py-2.5 px-3 text-right">Unitário</th>
+                        <th className="py-2.5 px-4 text-right">Subtotal</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-surface-container">
+                    <tbody className="divide-y divide-slate-100">
                       {parsedResult.items.map((it, idx) => (
-                        <tr key={idx} className="hover:bg-surface-container-low/50">
-                          <td className="p-sm pl-md font-medium text-on-surface max-w-xs truncate">{it.name}</td>
-                          <td className="p-sm text-center text-on-surface-variant">{it.quantity}x</td>
-                          <td className="p-sm text-right text-on-surface-variant">R$ {it.price.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
-                          <td className="p-sm text-right font-medium text-on-surface pr-md">R$ {(it.price * it.quantity).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</td>
+                        <tr key={idx} className="hover:bg-slate-50/70">
+                          <td className="py-2 px-4 font-medium text-slate-900 max-w-xs truncate">
+                            {it.name}
+                          </td>
+                          <td className="py-2 px-3 text-center font-mono tabular-nums text-slate-600">
+                            {it.quantity}x
+                          </td>
+                          <td className="py-2 px-3 text-right font-mono tabular-nums text-slate-600">
+                            R${" "}
+                            {it.price.toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2
+                            })}
+                          </td>
+                          <td className="py-2 px-4 text-right font-mono tabular-nums font-semibold text-slate-900">
+                            R${" "}
+                            {(it.price * it.quantity).toLocaleString("pt-BR", {
+                              minimumFractionDigits: 2
+                            })}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -430,32 +480,42 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
             </div>
           )}
 
-          {/* Active Image loaded but scanning hasn't run yet */}
           {selectedImage && !isScanning && !parsedResult && (
-            <div className="space-y-md flex flex-col items-center">
-              <div className="relative max-w-sm w-full h-64 rounded-2xl overflow-hidden border border-surface-container shadow-inner">
-                <img
-                  src={selectedImage}
-                  referrerPolicy="no-referrer"
-                  alt="Previa do Cupom"
-                  className="w-full h-full object-cover"
-                />
+            <div className="space-y-4 flex flex-col items-center">
+              <div className="relative max-w-xs w-full h-60 rounded-xl overflow-hidden border border-slate-200 bg-slate-50 flex items-center justify-center">
+                {!imageLoadError ? (
+                  <img
+                    src={selectedImage}
+                    referrerPolicy="no-referrer"
+                    alt="Pré-visualização da nota fiscal"
+                    onError={() => setImageLoadError(true)}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-center p-4">
+                    <FileText className="w-8 h-8 text-slate-400 mx-auto mb-2" />
+                    <span className="text-xs text-slate-500">
+                      Documento carregado
+                    </span>
+                  </div>
+                )}
                 <button
                   onClick={resetState}
-                  className="absolute top-md right-md p-1.5 bg-black/60 rounded-full text-white hover:bg-black transition-colors"
+                  className="absolute top-3 right-3 p-1.5 bg-slate-900/70 rounded-lg text-white hover:bg-slate-900 transition-colors cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
-              <p className="font-sans text-xs text-on-surface-variant text-center max-w-md">
-                Imagem preparada. Clique no botão de confirmação abaixo para processar e inferir os valores via IA com o Gemini.
+              <p className="text-xs text-slate-500 text-center max-w-sm">
+                Imagem pronta para análise. Confirme abaixo para extrair os
+                itens automaticamente.
               </p>
             </div>
           )}
         </div>
 
-        {/* Footer actions */}
-        <div className="p-lg bg-surface-container-low border-t border-surface-container flex items-center justify-between">
+        {/* Footer */}
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200/80 flex items-center justify-between gap-3">
           <button
             onClick={() => {
               if (parsedResult) {
@@ -464,17 +524,17 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
                 onClose();
               }
             }}
-            className="px-lg py-3 rounded-xl border border-outline-variant hover:bg-surface text-xs font-bold text-on-surface transition-colors active:scale-98 duration-100"
+            className="px-4 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors cursor-pointer whitespace-nowrap"
           >
-            {parsedResult ? "Escanear Outro" : "Fechar"}
+            {parsedResult ? "Escanear Outra" : "Fechar"}
           </button>
 
           {selectedImage && !parsedResult && !isScanning && (
             <button
               onClick={startScanningHandler}
-              className="px-xl py-3 rounded-xl bg-brand-secondary text-brand-on-secondary-container text-xs font-bold flex items-center gap-xs hover:bg-brand-secondary/80 transition-colors active:scale-98 duration-100"
+              className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold inline-flex items-center gap-2 hover:bg-indigo-700 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <span>Confirmar e Analisar</span>
+              <span>Analisar Nota</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
@@ -482,9 +542,9 @@ export default function ScanReceiptModal({ isOpen, onClose, onReceiptProcessed }
           {parsedResult && !isScanning && (
             <button
               onClick={handleSaveResult}
-              className="px-xl py-3 rounded-xl bg-brand-primary text-white text-xs font-bold flex items-center gap-xs hover:bg-brand-primary/85 transition-colors active:scale-98 duration-100"
+              className="px-5 py-2 rounded-lg bg-indigo-600 text-white text-xs font-semibold inline-flex items-center gap-2 hover:bg-indigo-700 transition-colors cursor-pointer whitespace-nowrap"
             >
-              <span>Salvar Como Lista de Compras</span>
+              <span>Registrar Lançamento</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           )}
