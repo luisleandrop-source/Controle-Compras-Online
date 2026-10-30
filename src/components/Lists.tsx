@@ -22,7 +22,12 @@ import {
   Clock,
   CheckCircle2,
   BarChart3,
-  SlidersHorizontal
+  SlidersHorizontal,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
+  ListFilter,
+  RotateCcw
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { ShoppingList, ShoppingItem, AppCategory } from "../types";
@@ -54,22 +59,45 @@ const formatDate = (dateStr: string | undefined): string => {
   return dateStr;
 };
 
+const PT_MONTH_MAP: Record<string, string> = {
+  jan: "01",
+  fev: "02",
+  mar: "03",
+  abr: "04",
+  mai: "05",
+  jun: "06",
+  jul: "07",
+  ago: "08",
+  set: "09",
+  out: "10",
+  nov: "11",
+  dez: "12"
+};
+
 const normalizeToISODate = (dateStr: string | undefined): string => {
   if (!dateStr) return "";
   const clean = dateStr.trim();
   if (clean.includes("-") && clean.split("-").length === 3) {
     const parts = clean.split("-");
     if (parts[0].length === 4) {
-      return clean;
+      return `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
     } else if (parts[2].length === 4) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
     }
   }
   if (clean.includes("/") && clean.split("/").length === 3) {
     const parts = clean.split("/");
     if (parts[2].length === 4) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    } else if (parts[0].length === 4) {
+      return `${parts[0]}-${parts[1].padStart(2, "0")}-${parts[2].padStart(2, "0")}`;
     }
+  }
+  const ptMatch = clean
+    .toLowerCase()
+    .match(/^(\d{1,2})\s+(?:de\s+)?([a-zç]{3})[a-z.]*\s+(?:de\s+)?(\d{4})$/);
+  if (ptMatch && PT_MONTH_MAP[ptMatch[2]]) {
+    return `${ptMatch[3]}-${PT_MONTH_MAP[ptMatch[2]]}-${ptMatch[1].padStart(2, "0")}`;
   }
   return clean;
 };
@@ -85,6 +113,190 @@ const formatCategoryDisplay = (category: string | undefined): { code: string; de
     return { code: matchStart[1], desc: matchStart[2] };
   }
   return { code: "", desc: category };
+};
+
+type SortColumn =
+  | "date"
+  | "fornecedor"
+  | "produto"
+  | "status"
+  | "spent"
+  | "parcelas"
+  | "category"
+  | "solicitante"
+  | "centroCusto"
+  | "cartao"
+  | "destino";
+
+type SortDirection = "asc" | "desc";
+
+interface ColumnFilterState {
+  text: string;
+  selectedValues: string[];
+}
+
+const TABLE_COLUMNS: {
+  key: SortColumn;
+  label: string;
+  align: "left" | "center" | "right";
+  ascHint: string;
+  descHint: string;
+  menuAlign: "left" | "right";
+}[] = [
+  {
+    key: "date",
+    label: "Data",
+    align: "left",
+    ascHint: "Mais antigos → recentes",
+    descHint: "Mais recentes → antigos",
+    menuAlign: "left"
+  },
+  {
+    key: "fornecedor",
+    label: "Fornecedor",
+    align: "left",
+    ascHint: "A → Z",
+    descHint: "Z → A",
+    menuAlign: "left"
+  },
+  {
+    key: "produto",
+    label: "Produto / Descrição",
+    align: "left",
+    ascHint: "A → Z",
+    descHint: "Z → A",
+    menuAlign: "left"
+  },
+  {
+    key: "status",
+    label: "Status",
+    align: "left",
+    ascHint: "A → Z",
+    descHint: "Z → A",
+    menuAlign: "left"
+  },
+  {
+    key: "spent",
+    label: "Valor Realizado",
+    align: "right",
+    ascHint: "Menor → Maior",
+    descHint: "Maior → Menor",
+    menuAlign: "left"
+  },
+  {
+    key: "parcelas",
+    label: "Parc.",
+    align: "center",
+    ascHint: "1x → Maior",
+    descHint: "Maior → 1x",
+    menuAlign: "left"
+  },
+  {
+    key: "category",
+    label: "Conta Contábil",
+    align: "left",
+    ascHint: "Código / A → Z",
+    descHint: "Código / Z → A",
+    menuAlign: "left"
+  },
+  {
+    key: "solicitante",
+    label: "Solicitante",
+    align: "left",
+    ascHint: "A → Z",
+    descHint: "Z → A",
+    menuAlign: "right"
+  },
+  {
+    key: "centroCusto",
+    label: "C. Custo",
+    align: "left",
+    ascHint: "A → Z",
+    descHint: "Z → A",
+    menuAlign: "right"
+  },
+  {
+    key: "cartao",
+    label: "Cartão",
+    align: "left",
+    ascHint: "0 → 9",
+    descHint: "9 → 0",
+    menuAlign: "right"
+  },
+  {
+    key: "destino",
+    label: "Destino / Entrega",
+    align: "left",
+    ascHint: "A → Z",
+    descHint: "Z → A",
+    menuAlign: "right"
+  }
+];
+
+const ptCollator = new Intl.Collator("pt-BR", {
+  numeric: true,
+  sensitivity: "base"
+});
+
+const getSortableDateTimestamp = (dateStr: string | undefined): number | null => {
+  const iso = normalizeToISODate(dateStr);
+  if (!iso) return null;
+  const isoMatch = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    return Date.UTC(
+      Number(isoMatch[1]),
+      Number(isoMatch[2]) - 1,
+      Number(isoMatch[3])
+    );
+  }
+  const parsed = Date.parse(iso);
+  return Number.isNaN(parsed) ? null : parsed;
+};
+
+const getColumnDisplayValue = (list: ShoppingList, col: SortColumn): string => {
+  switch (col) {
+    case "date": {
+      const raw = list.dataLancamento || list.date;
+      const iso = normalizeToISODate(raw);
+      if (iso && /^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+        return formatDate(iso);
+      }
+      return raw ? formatDate(raw) : "Sem data";
+    }
+    case "fornecedor":
+      return (list.fornecedor || list.name || "Sem fornecedor").trim();
+    case "produto": {
+      const itemsSummary = (list.items || [])
+        .map((item) => `${item.name} (${item.quantity}x)`)
+        .join(", ");
+      return (list.descricao || itemsSummary || "Sem descrição").trim();
+    }
+    case "status":
+      return list.status === "CONCLUÍDO" ? "Concluído" : "Pendente";
+    case "spent":
+      return `R$ ${(Number(list.spent) || 0).toLocaleString("pt-BR", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      })}`;
+    case "parcelas":
+      return list.parcelas && list.parcelas > 1 ? `${list.parcelas}x` : "1x";
+    case "category": {
+      if (!list.category) return "Sem classificação";
+      const parsed = formatCategoryDisplay(list.category);
+      return parsed.code ? `${parsed.code} · ${parsed.desc}` : parsed.desc;
+    }
+    case "solicitante":
+      return (list.solicitante || "User").trim();
+    case "centroCusto":
+      return (list.centroCusto || "CC-TI-42").trim();
+    case "cartao":
+      return `Final ${(list.finalCartao || "9876").trim()}`;
+    case "destino": {
+      const dest = (list.destino || "Almoxarifado").trim();
+      const ent = list.entrega ? formatDate(list.entrega) : "";
+      return ent && ent !== "-" ? `${dest} · ${ent}` : dest;
+    }
+  }
 };
 
 export default function Lists({
@@ -119,6 +331,39 @@ export default function Lists({
   const [pageSize, setPageSize] = useState<number>(15);
   const [currentPage, setCurrentPage] = useState<number>(1);
 
+  const [sortConfig, setSortConfig] = useState<{
+    column: SortColumn | null;
+    direction: SortDirection;
+  }>({ column: null, direction: "asc" });
+  const [columnFilters, setColumnFilters] = useState<
+    Partial<Record<SortColumn, ColumnFilterState>>
+  >({});
+  const [openMenuCol, setOpenMenuCol] = useState<SortColumn | null>(null);
+  const tableHeaderRef = React.useRef<HTMLTableSectionElement | null>(null);
+
+  React.useEffect(() => {
+    if (!openMenuCol) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        tableHeaderRef.current &&
+        !tableHeaderRef.current.contains(e.target as Node)
+      ) {
+        setOpenMenuCol(null);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setOpenMenuCol(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [openMenuCol]);
+
   React.useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -131,7 +376,9 @@ export default function Lists({
     filterStartDate,
     filterEndDate,
     filterValue,
-    pageSize
+    pageSize,
+    sortConfig,
+    columnFilters
   ]);
 
   // Item additions inputs (Center Form)
@@ -298,7 +545,7 @@ export default function Lists({
   }, [shoppingLists]);
 
   const filteredLists = useMemo(() => {
-    return shoppingLists.filter((list) => {
+    const baseFiltered = shoppingLists.filter((list) => {
       const term = searchTerm.toLowerCase().trim();
       const listName = list.name || "";
 
@@ -420,6 +667,67 @@ export default function Lists({
         }
       }
 
+      let matchesColumnFilters = true;
+      for (const colDef of TABLE_COLUMNS) {
+        const colFilter = columnFilters[colDef.key];
+        if (!colFilter) continue;
+
+        const displayVal = getColumnDisplayValue(list, colDef.key);
+
+        if (
+          colFilter.selectedValues.length > 0 &&
+          !colFilter.selectedValues.includes(displayVal)
+        ) {
+          matchesColumnFilters = false;
+          break;
+        }
+
+        const q = colFilter.text.trim().toLowerCase();
+        if (q) {
+          if (colDef.key === "spent") {
+            const cleanedQ = q.replace("r$", "").trim();
+            const spentVal = Number(list.spent) || 0;
+            if (cleanedQ.startsWith(">")) {
+              const target = parseFloat(
+                cleanedQ.slice(1).trim().replace(/\./g, "").replace(",", ".")
+              );
+              if (!Number.isNaN(target) && !(spentVal >= target)) {
+                matchesColumnFilters = false;
+                break;
+              }
+            } else if (cleanedQ.startsWith("<")) {
+              const target = parseFloat(
+                cleanedQ.slice(1).trim().replace(/\./g, "").replace(",", ".")
+              );
+              if (!Number.isNaN(target) && !(spentVal <= target)) {
+                matchesColumnFilters = false;
+                break;
+              }
+            } else if (
+              !displayVal.toLowerCase().includes(q) &&
+              !spentVal.toString().includes(cleanedQ)
+            ) {
+              matchesColumnFilters = false;
+              break;
+            }
+          } else {
+            const normDisp = displayVal
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "");
+            const normQ = q
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "");
+            const rawIso =
+              colDef.key === "date" ? listDateNorm.toLowerCase() : "";
+            if (!normDisp.includes(normQ) && !rawIso.includes(normQ)) {
+              matchesColumnFilters = false;
+              break;
+            }
+          }
+        }
+      }
+
       return (
         matchesSearch &&
         matchesCategory &&
@@ -428,8 +736,51 @@ export default function Lists({
         matchesDestino &&
         matchesRequisitor &&
         matchesPeriod &&
-        matchesValue
+        matchesValue &&
+        matchesColumnFilters
       );
+    });
+
+    if (!sortConfig.column) {
+      return baseFiltered;
+    }
+
+    const col = sortConfig.column;
+    const dir = sortConfig.direction === "asc" ? 1 : -1;
+
+    return [...baseFiltered].sort((a, b) => {
+      if (col === "date") {
+        const aTime = getSortableDateTimestamp(a.dataLancamento || a.date);
+        const bTime = getSortableDateTimestamp(b.dataLancamento || b.date);
+        if (aTime === null && bTime === null) return 0;
+        if (aTime === null) return 1;
+        if (bTime === null) return -1;
+        return (aTime - bTime) * dir;
+      }
+
+      if (col === "spent") {
+        const aVal = Number(a.spent) || 0;
+        const bVal = Number(b.spent) || 0;
+        return (aVal - bVal) * dir;
+      }
+
+      if (col === "parcelas") {
+        const aParc = a.parcelas && a.parcelas > 1 ? Number(a.parcelas) : 1;
+        const bParc = b.parcelas && b.parcelas > 1 ? Number(b.parcelas) : 1;
+        return (aParc - bParc) * dir;
+      }
+
+      if (col === "category") {
+        const aEmpty = !a.category;
+        const bEmpty = !b.category;
+        if (aEmpty && bEmpty) return 0;
+        if (aEmpty) return 1;
+        if (bEmpty) return -1;
+      }
+
+      const aStr = getColumnDisplayValue(a, col);
+      const bStr = getColumnDisplayValue(b, col);
+      return ptCollator.compare(aStr, bStr) * dir;
     });
   }, [
     shoppingLists,
@@ -441,7 +792,9 @@ export default function Lists({
     filterRequisitor,
     filterStartDate,
     filterEndDate,
-    filterValue
+    filterValue,
+    columnFilters,
+    sortConfig
   ]);
 
   const handleExportToExcel = () => {
@@ -1053,6 +1406,120 @@ export default function Lists({
     }).format(val);
   };
 
+  const columnUniqueOptions = useMemo(() => {
+    const map = {} as Record<SortColumn, { value: string; count: number; sortMeta: number }[]>;
+    for (const colDef of TABLE_COLUMNS) {
+      const counts = new Map<string, { count: number; sortMeta: number }>();
+      shoppingLists.forEach((list) => {
+        const val = getColumnDisplayValue(list, colDef.key);
+        const existing = counts.get(val);
+        const meta =
+          colDef.key === "date"
+            ? getSortableDateTimestamp(list.dataLancamento || list.date) ?? 0
+            : colDef.key === "spent"
+              ? Number(list.spent) || 0
+              : colDef.key === "parcelas"
+                ? list.parcelas && list.parcelas > 1
+                  ? Number(list.parcelas)
+                  : 1
+                : 0;
+        if (existing) {
+          existing.count += 1;
+        } else {
+          counts.set(val, { count: 1, sortMeta: meta });
+        }
+      });
+
+      const entries = Array.from(counts.entries()).map(([value, info]) => ({
+        value,
+        count: info.count,
+        sortMeta: info.sortMeta
+      }));
+
+      entries.sort((a, b) => {
+        if (colDef.key === "date") {
+          return b.sortMeta - a.sortMeta;
+        }
+        if (colDef.key === "spent" || colDef.key === "parcelas") {
+          return a.sortMeta - b.sortMeta;
+        }
+        return ptCollator.compare(a.value, b.value);
+      });
+
+      map[colDef.key] = entries;
+    }
+    return map;
+  }, [shoppingLists]);
+
+  const isColumnFiltered = (col: SortColumn): boolean => {
+    const state = columnFilters[col];
+    const hasColState = Boolean(
+      state && (state.text.trim().length > 0 || state.selectedValues.length > 0)
+    );
+    if (col === "date") {
+      return hasColState || Boolean(filterStartDate || filterEndDate);
+    }
+    return hasColState;
+  };
+
+  const hasActiveColumnFilters = TABLE_COLUMNS.some((c) => {
+    const st = columnFilters[c.key];
+    return Boolean(st && (st.text.trim().length > 0 || st.selectedValues.length > 0));
+  });
+
+  const updateColumnTextFilter = (col: SortColumn, text: string) => {
+    setColumnFilters((prev) => ({
+      ...prev,
+      [col]: {
+        text,
+        selectedValues: prev[col]?.selectedValues || []
+      }
+    }));
+  };
+
+  const toggleColumnSelectedValue = (col: SortColumn, val: string) => {
+    setColumnFilters((prev) => {
+      const current = prev[col]?.selectedValues || [];
+      const nextValues = current.includes(val)
+        ? current.filter((v) => v !== val)
+        : [...current, val];
+      return {
+        ...prev,
+        [col]: {
+          text: prev[col]?.text || "",
+          selectedValues: nextValues
+        }
+      };
+    });
+  };
+
+  const clearSingleColumn = (col: SortColumn) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      delete next[col];
+      return next;
+    });
+    if (col === "date") {
+      setFilterStartDate("");
+      setFilterEndDate("");
+    }
+    if (sortConfig.column === col) {
+      setSortConfig({ column: null, direction: "asc" });
+    }
+  };
+
+  const handleHeaderLabelSort = (col: SortColumn) => {
+    setSortConfig((prev) => {
+      if (prev.column !== col) {
+        return { column: col, direction: "asc" };
+      }
+      if (prev.direction === "asc") {
+        return { column: col, direction: "desc" };
+      }
+      return { column: null, direction: "asc" };
+    });
+  };
+
   const hasActiveFilters = Boolean(
     filterFornecedor ||
       filterCentroCusto !== "All" ||
@@ -1062,7 +1529,8 @@ export default function Lists({
       filterCategory !== "All" ||
       filterStartDate ||
       filterEndDate ||
-      filterValue
+      filterValue ||
+      hasActiveColumnFilters
   );
 
   return (
@@ -1212,6 +1680,7 @@ export default function Lists({
                       setFilterStartDate("");
                       setFilterEndDate("");
                       setFilterValue("");
+                      setColumnFilters({});
                     }}
                     className="text-xs font-medium text-rose-600 hover:text-rose-700 inline-flex items-center gap-1 transition-colors cursor-pointer whitespace-nowrap"
                   >
@@ -1381,9 +1850,9 @@ export default function Lists({
             const paginatedLists = filteredLists.slice(startIndex, endIndex);
 
             return (
-              <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 border-b border-slate-200/80">
-                  <div className="flex items-center gap-3">
+              <div className="bg-white border border-slate-200/80 rounded-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-5 py-4 border-b border-slate-200/80 rounded-t-2xl">
+                  <div className="flex flex-wrap items-center gap-3">
                     <h2 className="text-sm font-semibold text-slate-900">
                       Planilha de Lançamentos
                     </h2>
@@ -1394,6 +1863,26 @@ export default function Lists({
                       {filteredLists.length}{" "}
                       {filteredLists.length === 1 ? "registro" : "registros"}
                     </span>
+
+                    {(sortConfig.column || hasActiveColumnFilters) && (
+                      <>
+                        <span className="text-slate-300" aria-hidden="true">
+                          ·
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSortConfig({ column: null, direction: "asc" });
+                            setColumnFilters({});
+                            setOpenMenuCol(null);
+                          }}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 transition-colors cursor-pointer whitespace-nowrap"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Resetar colunas</span>
+                        </button>
+                      </>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-2.5">
@@ -1412,9 +1901,16 @@ export default function Lists({
                   </div>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div
+                  className={`overflow-x-auto ${
+                    openMenuCol !== null ? "min-h-[460px]" : ""
+                  }`}
+                >
                   <table className="w-full text-left border-collapse min-w-[1380px]">
-                    <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80">
+                    <thead
+                      ref={tableHeaderRef}
+                      className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 select-none"
+                    >
                       <tr>
                         <th className="px-3 py-2.5 text-center w-10">
                           <input
@@ -1447,37 +1943,299 @@ export default function Lists({
                             className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
                           />
                         </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">Data</th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Fornecedor
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Produto / Descrição
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Status
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap text-right">
-                          Valor Realizado
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap text-center">
-                          Parc.
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Conta Contábil
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Solicitante
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          C. Custo
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Cartão
-                        </th>
-                        <th className="px-3 py-2.5 whitespace-nowrap">
-                          Destino / Entrega
-                        </th>
+
+                        {TABLE_COLUMNS.map((col) => {
+                          const isSorted = sortConfig.column === col.key;
+                          const isFiltered = isColumnFiltered(col.key);
+                          const isOpen = openMenuCol === col.key;
+                          const colState = columnFilters[col.key] || {
+                            text: "",
+                            selectedValues: []
+                          };
+                          const rawOptions = columnUniqueOptions[col.key] || [];
+                          const searchLower = colState.text.trim().toLowerCase();
+                          const visibleOptions = searchLower
+                            ? rawOptions.filter((opt) =>
+                                opt.value.toLowerCase().includes(searchLower)
+                              )
+                            : rawOptions;
+
+                          const alignFlexClass =
+                            col.align === "right"
+                              ? "justify-end"
+                              : col.align === "center"
+                                ? "justify-center"
+                                : "justify-start";
+
+                          return (
+                            <th
+                              key={col.key}
+                              className={`relative px-3 py-2 whitespace-nowrap ${
+                                col.align === "right"
+                                  ? "text-right"
+                                  : col.align === "center"
+                                    ? "text-center"
+                                    : "text-left"
+                              }`}
+                            >
+                              <div
+                                className={`inline-flex items-center gap-1 group ${alignFlexClass}`}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleHeaderLabelSort(col.key)}
+                                  title={`Ordenar por ${col.label} (crescente / decrescente)`}
+                                  className={`inline-flex items-center gap-1 py-0.5 rounded transition-colors cursor-pointer whitespace-nowrap ${
+                                    isSorted
+                                      ? "text-indigo-600 font-bold"
+                                      : "text-slate-600 hover:text-slate-900"
+                                  }`}
+                                >
+                                  <span>{col.label}</span>
+                                  {isSorted ? (
+                                    sortConfig.direction === "asc" ? (
+                                      <ArrowUp className="w-3 h-3 text-indigo-600 shrink-0" />
+                                    ) : (
+                                      <ArrowDown className="w-3 h-3 text-indigo-600 shrink-0" />
+                                    )
+                                  ) : (
+                                    <ArrowUpDown className="w-3 h-3 text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                                  )}
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenMenuCol((prev) =>
+                                      prev === col.key ? null : col.key
+                                    );
+                                  }}
+                                  title={`Filtrar e ordenar ${col.label}`}
+                                  className={`relative p-1 rounded-md transition-colors cursor-pointer shrink-0 ${
+                                    isOpen || isFiltered || isSorted
+                                      ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"
+                                      : "text-slate-400 hover:text-slate-700 hover:bg-slate-200/60"
+                                  }`}
+                                >
+                                  <ListFilter className="w-3 h-3" />
+                                  {isFiltered && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-indigo-600" />
+                                  )}
+                                </button>
+                              </div>
+
+                              {isOpen && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`absolute top-full mt-1.5 z-40 w-68 bg-white border border-slate-200 rounded-xl shadow-xl p-3 text-left font-normal text-slate-700 space-y-2.5 ${
+                                    col.menuAlign === "right"
+                                      ? "right-0"
+                                      : "left-0"
+                                  }`}
+                                >
+                                  {/* Sort Actions */}
+                                  <div className="space-y-1">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block px-1">
+                                      Ordenação · {col.label}
+                                    </span>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSortConfig((prev) =>
+                                          prev.column === col.key &&
+                                          prev.direction === "asc"
+                                            ? { column: null, direction: "asc" }
+                                            : {
+                                                column: col.key,
+                                                direction: "asc"
+                                              }
+                                        );
+                                        setOpenMenuCol(null);
+                                      }}
+                                      className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                                        isSorted &&
+                                        sortConfig.direction === "asc"
+                                          ? "bg-indigo-50 text-indigo-700 font-semibold"
+                                          : "hover:bg-slate-50 text-slate-700 font-medium"
+                                      }`}
+                                    >
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <ArrowUp className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Ordem Crescente</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-400">
+                                        {col.ascHint}
+                                      </span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setSortConfig((prev) =>
+                                          prev.column === col.key &&
+                                          prev.direction === "desc"
+                                            ? { column: null, direction: "asc" }
+                                            : {
+                                                column: col.key,
+                                                direction: "desc"
+                                              }
+                                        );
+                                        setOpenMenuCol(null);
+                                      }}
+                                      className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer whitespace-nowrap ${
+                                        isSorted &&
+                                        sortConfig.direction === "desc"
+                                          ? "bg-indigo-50 text-indigo-700 font-semibold"
+                                          : "hover:bg-slate-50 text-slate-700 font-medium"
+                                      }`}
+                                    >
+                                      <span className="inline-flex items-center gap-1.5">
+                                        <ArrowDown className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Ordem Decrescente</span>
+                                      </span>
+                                      <span className="text-[10px] text-slate-400">
+                                        {col.descHint}
+                                      </span>
+                                    </button>
+                                  </div>
+
+                                  {/* Date Range Filter inside Data Column */}
+                                  {col.key === "date" && (
+                                    <div className="pt-2 border-t border-slate-100 space-y-1.5">
+                                      <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 block px-1">
+                                        Período
+                                      </span>
+                                      <div className="grid grid-cols-2 gap-1.5">
+                                        <div>
+                                          <label className="text-[10px] text-slate-400 block mb-0.5">
+                                            De
+                                          </label>
+                                          <input
+                                            type="date"
+                                            value={filterStartDate}
+                                            onChange={(e) =>
+                                              setFilterStartDate(e.target.value)
+                                            }
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 text-[11px] text-slate-800 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:border-indigo-600"
+                                          />
+                                        </div>
+                                        <div>
+                                          <label className="text-[10px] text-slate-400 block mb-0.5">
+                                            Até
+                                          </label>
+                                          <input
+                                            type="date"
+                                            value={filterEndDate}
+                                            onChange={(e) =>
+                                              setFilterEndDate(e.target.value)
+                                            }
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-md px-1.5 py-1 text-[11px] text-slate-800 font-mono tabular-nums focus:bg-white focus:outline-hidden focus:border-indigo-600"
+                                          />
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Quick Column Value Filter */}
+                                  <div className="pt-2 border-t border-slate-100 space-y-2">
+                                    <div className="relative">
+                                      <Search className="w-3 h-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                                      <input
+                                        type="text"
+                                        value={colState.text}
+                                        onChange={(e) =>
+                                          updateColumnTextFilter(
+                                            col.key,
+                                            e.target.value
+                                          )
+                                        }
+                                        placeholder={
+                                          col.key === "spent"
+                                            ? "Ex: >500 ou valor..."
+                                            : `Filtrar ${col.label.toLowerCase()}...`
+                                        }
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-7 pr-6 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:bg-white focus:outline-hidden focus:border-indigo-600"
+                                      />
+                                      {colState.text && (
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            updateColumnTextFilter(col.key, "")
+                                          }
+                                          className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {visibleOptions.length > 0 && (
+                                      <div className="max-h-36 overflow-y-auto space-y-0.5 pr-0.5">
+                                        {visibleOptions.map((opt) => {
+                                          const checked =
+                                            colState.selectedValues.includes(
+                                              opt.value
+                                            );
+                                          return (
+                                            <label
+                                              key={opt.value}
+                                              className="flex items-center justify-between gap-2 px-2 py-1 rounded-md hover:bg-slate-50 cursor-pointer text-xs"
+                                            >
+                                              <span className="flex items-center gap-2 min-w-0">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={checked}
+                                                  onChange={() =>
+                                                    toggleColumnSelectedValue(
+                                                      col.key,
+                                                      opt.value
+                                                    )
+                                                  }
+                                                  className="w-3.5 h-3.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer shrink-0"
+                                                />
+                                                <span
+                                                  className="truncate text-slate-700"
+                                                  title={opt.value}
+                                                >
+                                                  {opt.value}
+                                                </span>
+                                              </span>
+                                              <span className="text-[10px] font-mono tabular-nums text-slate-400 shrink-0">
+                                                {opt.count}
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Footer */}
+                                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                                    <button
+                                      type="button"
+                                      disabled={!isFiltered && !isSorted}
+                                      onClick={() => clearSingleColumn(col.key)}
+                                      className="text-[11px] font-medium text-rose-600 hover:text-rose-700 disabled:text-slate-300 disabled:cursor-not-allowed cursor-pointer transition-colors"
+                                    >
+                                      Limpar segmento
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setOpenMenuCol(null)}
+                                      className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white rounded-md text-[11px] font-semibold cursor-pointer transition-colors"
+                                    >
+                                      Concluir
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </th>
+                          );
+                        })}
+
                         <th className="px-3 py-2.5 whitespace-nowrap text-right pr-5">
                           Ações
                         </th>
@@ -1847,7 +2605,7 @@ export default function Lists({
                 </div>
 
                 {/* Pagination Bar */}
-                <div className="bg-slate-50/50 border-t border-slate-200/80 px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div className="bg-slate-50/50 border-t border-slate-200/80 rounded-b-2xl px-5 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
                   <div className="text-xs text-slate-500">
                     Mostrando{" "}
                     <span className="text-slate-900 font-mono tabular-nums font-semibold">
